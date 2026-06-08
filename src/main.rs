@@ -1,3 +1,8 @@
+mod engine;
+
+use engine::board::Board;
+
 fn main() {
-    println!("Hello, world!");
+    let _board = Board::from_connections_file();
+    
 }

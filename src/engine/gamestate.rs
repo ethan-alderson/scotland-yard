@@ -31,11 +31,6 @@ enum Action {
     Double(Step, Step),
 }
 
-/*
-
-What else does game state need?
-
-*/
 struct GameState<'a> {
     
     // notion of fully observable information
