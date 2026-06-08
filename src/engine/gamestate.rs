@@ -1,7 +1,6 @@
-mod board;
 
-use crate::board::Board;
-use crate::board::TicketType;
+use super::board::Board;
+use super::board::TicketType;
 
 enum PlayerId {
     MrX,

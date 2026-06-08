@@ -12,7 +12,7 @@ struct Node {
 }
 
 #[derive(Copy, Clone)]
-enum TicketType {
+pub enum TicketType {
     Taxi,
     Bus,
     Underground,
