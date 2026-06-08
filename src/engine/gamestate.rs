@@ -2,22 +2,35 @@
 use super::board::Board;
 use super::board::TicketType;
 
-enum PlayerId {
+pub enum PlayerId {
     MrX,
     Detective(u8)
 }
 
 #[derive(Copy, Clone)]
-struct TicketSet {
+pub struct TicketSet {
     taxi: u8,
     bus: u8,
-    underground: u8
+    underground: u8,
+    water: u8
 }
 
-struct PlayerState {
+impl TicketSet {
+    pub fn new(taxi: u8, bus: u8, underground: u8, water: u8) -> Self {
+        Self { taxi, bus, underground, water }
+    }
+}
+
+pub struct PlayerState {
     id: PlayerId,
     node: u8,
     tickets: TicketSet
+}
+
+impl PlayerState {
+    pub fn new(id: PlayerId, node: u8, tickets: TicketSet) -> Self {
+        Self { id, node, tickets }
+    }
 }
 
 struct Step {
@@ -30,7 +43,7 @@ enum Action {
     Double(Step, Step),
 }
 
-struct GameState<'a> {
+pub struct GameState<'a> {
     
     // notion of fully observable information
 
@@ -47,6 +60,19 @@ struct GameState<'a> {
 
     // Some notion of move history for debugging can be added later
 
+}
+
+impl<'a> GameState<'a> {
+    pub fn new(board: &'a Board, players: Vec<PlayerState>) -> Self {
+        Self {
+            board,
+            players,
+            current_player: 0,
+            turn_number: 0,
+            is_terminal: false,
+            winner: None,
+        }
+    }
 }
 
 struct GameHistory {
