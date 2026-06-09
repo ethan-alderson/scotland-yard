@@ -43,10 +43,6 @@ impl TicketInventory {
     }
 }
 
-
-
-
-
 pub struct PlayerState {
     pub id: PlayerId,
     pub node: u8,
@@ -60,8 +56,8 @@ impl PlayerState {
 }
 
 pub struct Step {
-    to: u8,
-    ticket: TicketType,
+    pub to: u8,
+    pub ticket: TicketType,
 }
 
 pub enum Action {
