@@ -18,8 +18,8 @@ a -1 that indexes the adjacency map correctly.
 
 
 1) Define Station_Id as a 1 indexed u8 wrapper
-2) Convert adjacency map to a list of station ids
-3) Write neighbors impl in board that handles the transition from 1 to 0 indexing for the source station
-4) Repair function to load board from file that uses the raw Station IDs.
+2) Convert adjacency map tuples to station ids from u8s
+3) Write neighbors function in board struct that handles the transition from 1 to 0 indexing for the source station
+4) Repair function to load board from file that uses the Station IDs but fills adjacency map.
 5) Rewrite gamestate steps and other u8s to reference Station ID.
 6) Rewrite rules to use new station ID. 
