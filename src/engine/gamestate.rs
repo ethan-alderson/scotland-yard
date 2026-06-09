@@ -8,37 +8,63 @@ pub enum PlayerId {
 }
 
 #[derive(Copy, Clone)]
-pub struct TicketSet {
+pub struct TicketInventory {
     taxi: u8,
     bus: u8,
     underground: u8,
-    water: u8
+    black: u8
 }
 
-impl TicketSet {
-    pub fn new(taxi: u8, bus: u8, underground: u8, water: u8) -> Self {
-        Self { taxi, bus, underground, water }
+// CONSTRUCTORS
+impl TicketInventory {
+    pub fn new(taxi: u8, bus: u8, underground: u8, black: u8) -> Self {
+        Self { taxi, bus, underground, black }
     }
 }
 
+// GETTERS
+impl TicketInventory {
+    pub fn get(&self, tt: TicketType) -> &u8 {
+        match tt {
+            TicketType::Taxi => &self.taxi,
+            TicketType::Bus => &self.bus,
+            TicketType::Underground => &self.underground,
+            TicketType::Black => &self.black
+        }
+    }
+
+    pub fn get_mut(&mut self, tt: TicketType) -> &mut u8 {
+        match tt {
+            TicketType::Taxi => &mut self.taxi,
+            TicketType::Bus => &mut self.bus,
+            TicketType::Underground => &mut self.underground,
+            TicketType::Black => &mut self.black
+        }
+    }
+}
+
+
+
+
+
 pub struct PlayerState {
-    id: PlayerId,
-    node: u8,
-    tickets: TicketSet
+    pub id: PlayerId,
+    pub node: u8,
+    pub tickets: TicketInventory
 }
 
 impl PlayerState {
-    pub fn new(id: PlayerId, node: u8, tickets: TicketSet) -> Self {
+    pub fn new(id: PlayerId, node: u8, tickets: TicketInventory) -> Self {
         Self { id, node, tickets }
     }
 }
 
-struct Step {
+pub struct Step {
     to: u8,
     ticket: TicketType,
 }
 
-enum Action {
+pub enum Action {
     Single(Step),
     Double(Step, Step),
 }
@@ -47,10 +73,10 @@ pub struct GameState<'a> {
     
     // notion of fully observable information
 
-    board: &'a Board,
-    players: Vec<PlayerState>,
+    pub board: &'a Board,
+    pub players: Vec<PlayerState>,
     // The player moving as an index in the player vector
-    current_player: usize,
+    pub current_player: usize,
     turn_number: usize,
 
     // We also need termination

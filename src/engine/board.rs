@@ -16,7 +16,7 @@ pub enum TicketType {
     Taxi,
     Bus,
     Underground,
-    Water
+    Black
 }
 
 impl FromStr for TicketType {
@@ -27,7 +27,7 @@ impl FromStr for TicketType {
             "taxi" => Ok(TicketType::Taxi),
             "bus" => Ok(TicketType::Bus),
             "underground" => Ok(TicketType::Underground),
-            "water" => Ok(TicketType::Water),
+            "water" => Ok(TicketType::Black),
             _ => Err(format!("Unknown ticket type: {}", s)),
         }
     }
@@ -39,7 +39,7 @@ accelerate MCTS.  */
 pub struct Board {
     // 2D vector, outer is length num_nodes, inner is variable length but its a list 
     // of tuples of neighbors and the ticket required to get there
-    adjacency_map: Vec<Vec<(u8, TicketType)>>
+    pub adjacency_map: Vec<Vec<(u8, TicketType)>>
 }
 
 impl Board {
