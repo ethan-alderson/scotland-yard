@@ -6,9 +6,12 @@ use std::fs::File;
 use std::str::FromStr;
 use std::io::{BufRead, BufReader};
 
-struct Node {
+// StationId is the station number on the scotland yard board
+
+#[derive(Copy, Clone)]
+pub struct StationId {
     // 8-bit for 199 total nodes
-    id: u8
+    pub id: u8
 }
 
 #[derive(Copy, Clone)]
@@ -39,10 +42,16 @@ accelerate MCTS.  */
 pub struct Board {
     // 2D vector, outer is length num_nodes, inner is variable length but its a list 
     // of tuples of neighbors and the ticket required to get there
-    pub adjacency_map: Vec<Vec<(u8, TicketType)>>
+    adjacency_map: Vec<Vec<(StationId, TicketType)>>
 }
 
 impl Board {
+
+    // index the board given a 1 indexed value to isolate the indexing difference
+    pub fn neighbors(&self, sid: StationId) -> &Vec<(StationId, TicketType)> {
+        &self.adjacency_map[sid.id as usize - 1]
+    }
+
     pub fn from_connections_file() -> Self {
 
         let file = File::open("connections.txt").expect("failed to open file");
@@ -50,23 +59,22 @@ impl Board {
 
         let size: usize = 199;
 
-        let mut adj_map: Vec<Vec<(u8, TicketType)>> = vec![vec![]; size];
+        let mut adj_map: Vec<Vec<(StationId, TicketType)>> = vec![vec![]; size];
 
         for line in reader.lines() {
             let line_string = line.expect("failed to parse");
             let record: Vec<&str> = line_string.split(' ').collect();
             
-            // Subtract 1 since station id is 1 indexed
-            let idx: usize = record[0].parse::<usize>().unwrap() - 1;
+            let idx: usize = record[0].parse::<usize>().unwrap();
             // destination is still station id which is indexed at 1
-            let dest: u8 = record[1].parse::<u8>().unwrap();
+            let dest: StationId = StationId {id: record[1].parse::<u8>().unwrap()};
             let ticket: TicketType = record[2].parse::<TicketType>().unwrap();
 
             adj_map[idx].push((dest, ticket));
 
             // include both edge directions in the adjacency map
-            let dest_idx = (dest - 1) as usize;
-            adj_map[dest_idx].push(((idx + 1) as u8, ticket));
+            let dest_idx = (dest.id - 1) as usize;
+            adj_map[dest_idx].push((StationId {id: (idx + 1) as u8}, ticket));
         }
 
         Board {

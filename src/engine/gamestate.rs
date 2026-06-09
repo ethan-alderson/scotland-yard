@@ -1,6 +1,7 @@
 
 use super::board::Board;
 use super::board::TicketType;
+use super::board::StationId;
 
 pub enum PlayerId {
     MrX,
@@ -45,18 +46,18 @@ impl TicketInventory {
 
 pub struct PlayerState {
     pub id: PlayerId,
-    pub node: u8,
+    pub station: StationId,
     pub tickets: TicketInventory
 }
 
 impl PlayerState {
-    pub fn new(id: PlayerId, node: u8, tickets: TicketInventory) -> Self {
-        Self { id, node, tickets }
+    pub fn new(id: PlayerId, station: StationId, tickets: TicketInventory) -> Self {
+        Self { id, station, tickets }
     }
 }
 
 pub struct Step {
-    pub to: u8,
+    pub to: StationId,
     pub ticket: TicketType,
 }
 

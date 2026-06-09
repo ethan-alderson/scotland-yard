@@ -15,15 +15,17 @@ fn legal_actions(gamestate: &GameState) -> Vec<Action> {
     let curr_player: &PlayerState = &gamestate.players[gamestate.current_player];
     let mut legal_moves: Vec<Action> = vec![];
 
+    //     // index the board given a 1 indexed value to isolate the indexing difference
+    // pub fn neighbors(&self, sid: StationId) -> &Vec<(StationId, TicketType)> {
+    //     &self.adjacency_map[sid.id as usize - 1]
+    // }
+
     // core logic to search for single steps across all players
-    if let Some(neighbors) = 
-        gamestate.board.adjacency_map.get(curr_player.node as usize - 1) {
-        for &(dest, tt) in neighbors {
-            if *curr_player.tickets.get(tt) > 0{
-                legal_moves.push(Action::Single(
-                    Step {to: dest, ticket: tt}
-                ));
-            }
+    for &(dest, tt) in gamestate.board.neighbors(curr_player.station) {
+        if *curr_player.tickets.get(tt) > 0{
+            legal_moves.push(Action::Single(
+                Step {to: dest, ticket: tt}
+            ));
         }
     }
     legal_moves
