@@ -4,47 +4,30 @@
 use super::gamestate::GameState;
 use super::gamestate::PlayerState;
 use super::gamestate::PlayerId;
-use super::gamestate::TicketInventory;
 
 use super::gamestate::Step;
 use super::gamestate::Action;
 
-// needs a rewrite
-fn legal_actions(gamestate: &GameState) -> Vec<Action> {
-    println!("pass");
 
-    let curr_player: &PlayerState = &gamestate.players[gamestate.current_player];
-    let mut legal_moves: Vec<Action> = vec![];
+// fn legal_steps(gamestate: &GameState) -> Vec<Step> {
 
-    // core logic to search for single steps across all players
-    for &(dest, tt) in gamestate.board.neighbors(curr_player.station) {
-        if *curr_player.tickets.get(tt) > 0{
-            legal_moves.push(Action::Single(
-                Step {to: dest, ticket: tt}
-            ));
-        }
-    }
-    legal_moves
-}
+// }
+
+// fn legal_actions(gamestate: &GameState) -> Vec<Action> {
+    
+// }
 
 fn apply_action<'board>(gamestate: &GameState<'board>, action: Action) -> GameState<'board> {
-    // assume applied action is legal
-    // generate a new gamestate with new current player state modified by the action
-
-    let curr_player = &gamestate.players[gamestate.current_player];
-
     match action {
-        Action::Single(s) => {
-            return apply_step(gamestate, s);
-        }
+        Action::Single(s) => apply_step(gamestate, s),
         Action::Double(s1, s2) => {
-            return apply_step(&apply_step(gamestate, s1), s2);
-;        }
+            let intermediate = apply_step(gamestate, s1);
+            apply_step(&intermediate, s2)
+        }
     }
 }
 
 fn apply_step<'board>(gamestate: &GameState<'board>, step: Step) -> GameState<'board> {
-
     let curr_player = &gamestate.players[gamestate.current_player];
 
     let mut new_inventory = curr_player.tickets.clone();
@@ -59,39 +42,11 @@ fn apply_step<'board>(gamestate: &GameState<'board>, step: Step) -> GameState<'b
     let mut new_players = gamestate.players.clone();
     new_players[gamestate.current_player] = new_pose;
 
-    return GameState {
+    GameState {
         players: new_players,
         ..gamestate.clone()
-    };
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 fn is_step_legal<'gs, 'board>(gamestate: &'gs GameState<'board>, step: Step) -> bool {
     let curr_player = &gamestate.players[gamestate.current_player];
@@ -105,36 +60,32 @@ fn is_step_legal<'gs, 'board>(gamestate: &'gs GameState<'board>, step: Step) -> 
         }) // step target is unoccupied by a detective
 }
 
-// fn is_action_legal<'gs, 'board>(gamestate: &'gs GameState<'board>, action: Action) -> bool {
+fn is_action_legal(gamestate: &GameState, action: Action) -> bool {
 
-//     if gamestate.is_terminal {
-//         return false;
-//     }
+    if gamestate.is_terminal {
+        return false;
+    }
 
-//     let curr_player: &PlayerId = &gamestate.players[gamestate.current_player].id;
+    let curr_player: &PlayerId = &gamestate.players[gamestate.current_player].id;
 
-//     match curr_player {
-//         PlayerId::Detective(n) => {
-//             match action {
-//                 Action::Single(s) => {
-//                     // temporary, stick anything detective specific here
-//                     return true;
-//                 }
-//                 Action::Double(s1,s2 ) => {
-//                     return false;
-//                 }
-//             }
-//         }
-//         PlayerId::MrX => {
-//             match action {
-//                 Action::Single(s) => {
-//                     return true;
-//                 }
-//                 Action::Double(s1,s2 ) => {
-//                     // Requires apply_action to test the intermediate step
-//                     return true;
-//                 }
-//             }
-//         }
-//     }
-// }
+    match curr_player {
+        PlayerId::Detective(n) => {
+            match action {
+                Action::Single(s) => is_step_legal(gamestate, s),
+                Action::Double(s1,s2 ) => false
+            }
+        }
+        PlayerId::MrX => {
+            match action {
+                Action::Single(s) => is_step_legal(gamestate, s),
+                Action::Double(s1,s2 ) => {
+                    // Requires apply_action to test the intermediate step
+                    is_step_legal(gamestate, s1) && {
+                    let intermediate = apply_step(gamestate, s1);
+                    is_step_legal(&intermediate, s2)
+}
+                }
+            }
+        }
+    }
+}
