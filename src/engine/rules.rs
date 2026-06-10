@@ -9,13 +9,45 @@ use super::gamestate::Step;
 use super::gamestate::Action;
 
 
-// fn legal_steps(gamestate: &GameState) -> Vec<Step> {
+fn legal_steps(gamestate: &GameState) -> Vec<Step> {
+    let curr_player = &gamestate.players[gamestate.current_player];
+    let mut steps = Vec::new();
 
-// }
+    for &(dest, tt) in gamestate.board.neighbors(curr_player.station) {
+        let step = Step {
+            to: dest,
+            ticket: tt,
+        };
 
-// fn legal_actions(gamestate: &GameState) -> Vec<Action> {
-    
-// }
+        if is_step_legal(gamestate, step) {
+            steps.push(step);
+        }
+    }
+
+    steps
+}
+
+fn legal_actions(gamestate: &GameState) -> Vec<Action> {
+    let single_steps = legal_steps(gamestate);
+    let curr_player = &gamestate.players[gamestate.current_player];
+
+    let mut actions: Vec<Action> = single_steps
+    .iter()
+    .copied()
+    .map(Action::Single)
+    .collect();
+
+    if matches!(curr_player.id, PlayerId::MrX) {
+        for first_step in &single_steps {
+            let intermediate = apply_step(gamestate, *first_step);
+
+            for second_step in legal_steps(&intermediate) {
+                actions.push(Action::Double(*first_step, second_step));
+            }
+        }
+    }
+    actions
+}
 
 fn apply_action<'board>(gamestate: &GameState<'board>, action: Action) -> GameState<'board> {
     match action {
