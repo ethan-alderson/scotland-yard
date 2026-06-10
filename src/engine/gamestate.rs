@@ -8,7 +8,7 @@ pub enum PlayerId {
     Detective(u8)
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct TicketInventory {
     taxi: u8,
     bus: u8,
@@ -46,8 +46,15 @@ impl TicketInventory {
 
 // Behavior
 impl TicketInventory {
-    pub fn spend_ticket(&mut self, tt: TicketType) {
-        *self.get_mut(tt) -= 1;
+    pub fn spend_ticket(&mut self, tt: TicketType) -> Result<(), &'static str> {
+    let count = self.get_mut(tt);
+
+    if *count == 0 {
+        return Err("No tickets available");
+    }
+
+    *count -= 1;
+    Ok(())
     }
 }
 
@@ -113,4 +120,41 @@ struct GameHistory {
     // need his known positions and also the ticket he used every turn
     mr_x_revealed_positions: Vec<Option<u8>>,
     mr_x_actions: Vec<Action>,
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn assert_ticket_get() {
+        let inv = TicketInventory::new(1,2,3,4);
+
+        assert_eq!(*inv.get(TicketType::Taxi), 1);
+        assert_eq!(*inv.get(TicketType::Bus), 2);
+        assert_eq!(*inv.get(TicketType::Underground), 3);
+        assert_eq!(*inv.get(TicketType::Black), 4);
+    }
+
+    #[test]
+    fn assert_spend_ticket_subtraction() {
+        let mut inv = TicketInventory::new(1,0,0,0);
+
+        assert!(inv.spend_ticket(TicketType::Taxi).is_ok());
+        assert_eq!(*inv.get(TicketType::Taxi), 0);
+    }
+
+    #[test]
+    fn assert_spend_ticket_underflow() {
+        let mut inventory = TicketInventory::new(0,0,0,0);
+
+        let before = inventory.clone(); // requires Clone
+        let result = inventory.spend_ticket(TicketType::Taxi);
+
+        assert!(result.is_err());
+        assert_eq!(inventory, before);
+        }
+
+
 }

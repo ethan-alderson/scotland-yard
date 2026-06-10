@@ -84,20 +84,6 @@ impl Board {
 }
 
 
-
-/*
-Test that every node in the range exists in the adjacency map - DONE
-test that there are no out of bounds nodes - DONE
-test that there are no missing nodes - DONE
-
-Test that for any edge traveling one direction there is an edge in the opposite direction - DONE
-
-Ensure every edge has a valid ticket type
-
-No duplicate edges A -> B and A -> B
-
-*/
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,7 +164,7 @@ mod tests {
 
         let board = setup_board();
 
-        // We track all directed edges and ensure we never see the same one twice
+        // track all directed edges and ensure we never see the same one twice
         let mut seen = HashSet::new();
 
         for (from_idx, neighbors) in board.adjacency_map.iter().enumerate() {
