@@ -9,6 +9,7 @@ use super::gamestate::TicketInventory;
 use super::gamestate::Step;
 use super::gamestate::Action;
 
+// needs a rewrite
 fn legal_actions(gamestate: &GameState) -> Vec<Action> {
     println!("pass");
 
@@ -25,19 +26,72 @@ fn legal_actions(gamestate: &GameState) -> Vec<Action> {
     }
     legal_moves
 }
-    // could implement branching here for players / mrx, could also prune if mrx is curr player and has a black ticket
-    // since that implies all neighbors are valid. These seem like future optimizations once correctness is confirmed.
-    /* if matches!(curr_player.id, PlayerId::Detective(_)) {
 
-    } else {
-        // executes if the current player is mr x, add black
-         ticket prune here?
-    } */
-    
-// fn apply_action<'gs, 'board>(gamestate: &'gs GameState<'board>, action: Action) -> 'gs GameState<'board> {
-//     // assume applied action is legal
+fn apply_action<'board>(gamestate: &GameState<'board>, action: Action) -> GameState<'board> {
+    // assume applied action is legal
+    // generate a new gamestate with new current player state modified by the action
 
-// }
+    let curr_player = &gamestate.players[gamestate.current_player];
+
+    match action {
+        Action::Single(s) => {
+            return apply_step(gamestate, s);
+        }
+        Action::Double(s1, s2) => {
+            return apply_step(&apply_step(gamestate, s1), s2);
+;        }
+    }
+}
+
+fn apply_step<'board>(gamestate: &GameState<'board>, step: Step) -> GameState<'board> {
+
+    let curr_player = &gamestate.players[gamestate.current_player];
+
+    let mut new_inventory = curr_player.tickets.clone();
+    new_inventory.spend_ticket(step.ticket);
+
+    let new_pose = PlayerState {
+        id: curr_player.id.clone(),
+        station: step.to,
+        tickets: new_inventory,
+    };
+
+    let mut new_players = gamestate.players.clone();
+    new_players[gamestate.current_player] = new_pose;
+
+    return GameState {
+        players: new_players,
+        ..gamestate.clone()
+    };
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 fn is_step_legal<'gs, 'board>(gamestate: &'gs GameState<'board>, step: Step) -> bool {
     let curr_player = &gamestate.players[gamestate.current_player];

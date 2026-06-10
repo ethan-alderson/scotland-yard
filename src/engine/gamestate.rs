@@ -3,7 +3,7 @@ use super::board::Board;
 use super::board::TicketType;
 use super::board::StationId;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum PlayerId {
     MrX,
     Detective(u8)
@@ -45,6 +45,14 @@ impl TicketInventory {
     }
 }
 
+// Behavior
+impl TicketInventory {
+    pub fn spend_ticket(&mut self, tt: TicketType) {
+        *self.get_mut(tt) -= 1;
+    }
+}
+
+#[derive(Clone)]
 pub struct PlayerState {
     pub id: PlayerId,
     pub station: StationId,
@@ -67,6 +75,7 @@ pub enum Action {
     Double(Step, Step),
 }
 
+#[derive(Clone)]
 pub struct GameState<'a> {
     
     // notion of fully observable information
@@ -75,12 +84,12 @@ pub struct GameState<'a> {
     pub players: Vec<PlayerState>,
     // The player moving as an index in the player vector
     pub current_player: usize,
-    turn_number: usize,
+    pub turn_number: usize,
 
     // We also need termination
 
     pub is_terminal: bool,
-    winner: Option<PlayerId>,
+    pub winner: Option<PlayerId>,
 
     // Some notion of move history for debugging can be added later
 
