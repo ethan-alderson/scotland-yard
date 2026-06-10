@@ -8,7 +8,7 @@ use std::io::{BufRead, BufReader};
 
 // StationId is the station number on the scotland yard board
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct StationId {
     // 8-bit for 199 total nodes
     pub id: u8

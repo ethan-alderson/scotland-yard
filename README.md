@@ -6,7 +6,15 @@ Need to add condition to the legal_actions check that ensures a target position 
 
 Determine the correct location of legal_moves (should it be a function of gamestate?)
 
+LEGAL_MOVES IMPROVEMENTS:
 
+Need a notion double moves for mr X ****
+
+Cannot move onto a position occupied by a detective. If a detective moves onto a position with mrx the gamestate is terminal and the winner is a detective.
+
+Add specific moves for MrX, black ticket pruning, and double tickets. Need to design double tickets here. 
+
+Add function to apply action to gamestate
 
 INDEXING PLAN:
 
@@ -16,6 +24,7 @@ Add a NodeId Struct that wraps a u8, u8 is the 1 indexed visual station # on the
 Add a neighbors function to board that produces all the neighbors of a given nodeId. This function contains 
 a -1 that indexes the adjacency map correctly. 
 
+Indexing error:
 
 1) Define Station_Id as a 1 indexed u8 wrapper - DONE
 2) Convert adjacency map tuples to station ids from u8s - DONE

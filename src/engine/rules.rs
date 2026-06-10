@@ -15,11 +15,6 @@ fn legal_actions(gamestate: &GameState) -> Vec<Action> {
     let curr_player: &PlayerState = &gamestate.players[gamestate.current_player];
     let mut legal_moves: Vec<Action> = vec![];
 
-    //     // index the board given a 1 indexed value to isolate the indexing difference
-    // pub fn neighbors(&self, sid: StationId) -> &Vec<(StationId, TicketType)> {
-    //     &self.adjacency_map[sid.id as usize - 1]
-    // }
-
     // core logic to search for single steps across all players
     for &(dest, tt) in gamestate.board.neighbors(curr_player.station) {
         if *curr_player.tickets.get(tt) > 0{
@@ -39,3 +34,53 @@ fn legal_actions(gamestate: &GameState) -> Vec<Action> {
          ticket prune here?
     } */
     
+// fn apply_action<'gs, 'board>(gamestate: &'gs GameState<'board>, action: Action) -> 'gs GameState<'board> {
+//     // assume applied action is legal
+
+// }
+
+fn is_step_legal<'gs, 'board>(gamestate: &'gs GameState<'board>, step: Step) -> bool {
+    let curr_player = &gamestate.players[gamestate.current_player];
+
+    *curr_player.tickets.get(step.ticket) > 0 // current player has the required ticket
+        && gamestate.board.neighbors(curr_player.station)
+            .iter()
+            .any(|tuple| tuple.0 == step.to) // step target is a neighbor
+        && !gamestate.players.iter().any(|p| {
+            matches!(p.id, PlayerId::Detective(_)) && p.station == step.to
+        }) // step target is unoccupied by a detective
+}
+
+// fn is_action_legal<'gs, 'board>(gamestate: &'gs GameState<'board>, action: Action) -> bool {
+
+//     if gamestate.is_terminal {
+//         return false;
+//     }
+
+//     let curr_player: &PlayerId = &gamestate.players[gamestate.current_player].id;
+
+//     match curr_player {
+//         PlayerId::Detective(n) => {
+//             match action {
+//                 Action::Single(s) => {
+//                     // temporary, stick anything detective specific here
+//                     return true;
+//                 }
+//                 Action::Double(s1,s2 ) => {
+//                     return false;
+//                 }
+//             }
+//         }
+//         PlayerId::MrX => {
+//             match action {
+//                 Action::Single(s) => {
+//                     return true;
+//                 }
+//                 Action::Double(s1,s2 ) => {
+//                     // Requires apply_action to test the intermediate step
+//                     return true;
+//                 }
+//             }
+//         }
+//     }
+// }

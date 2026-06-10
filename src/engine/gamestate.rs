@@ -3,6 +3,7 @@ use super::board::Board;
 use super::board::TicketType;
 use super::board::StationId;
 
+#[derive(PartialEq)]
 pub enum PlayerId {
     MrX,
     Detective(u8)
@@ -78,7 +79,7 @@ pub struct GameState<'a> {
 
     // We also need termination
 
-    is_terminal: bool,
+    pub is_terminal: bool,
     winner: Option<PlayerId>,
 
     // Some notion of move history for debugging can be added later
