@@ -46,7 +46,6 @@ fn legal_actions(gamestate: &GameState) -> Vec<Action> {
     actions
 }
 
-
 fn apply_step<'board>(gamestate: &GameState<'board>, step: Step) -> GameState<'board> {
     let curr_player = &gamestate.players[gamestate.current_player];
 
@@ -159,7 +158,7 @@ mod tests {
             PlayerState::new(
                 PlayerId::Detective(1),
                 detective_pos,
-                TicketInventory::new(0, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0),
             ),
         ];
 
@@ -167,7 +166,7 @@ mod tests {
     }
     
     #[test]
-    fn assert_step_legal_valid_move() {
+    fn is_step_legal_valid_move() {
         let state = make_state(
             StationId { id: 1 },
             TicketInventory::new(1, 0, 0, 0),
@@ -215,7 +214,7 @@ mod tests {
     }
 
     #[test]
-    fn is_step_legal_target_occupied() {
+    fn is_step_legal_target_detective_occupied() {
         let state = make_state(
             StationId { id: 1 },
             TicketInventory::new(1, 0, 0, 0),
@@ -228,5 +227,24 @@ mod tests {
         };
 
         assert!(!is_step_legal(&state, step));
+    }
+
+    #[test]
+    fn is_step_legal_target_mrx_occupied() {
+        let mut state = make_state(
+            StationId { id: 1 },
+            TicketInventory::new(1, 0, 0, 0),
+            StationId { id: 2 }, // detective is here
+        );
+
+        assert_eq!(state.players[state.current_player].station.id, 1);
+
+        state.current_player = 1;
+
+        let step = Step {
+            to: StationId { id: 1 },
+            ticket: TicketType::Taxi,
+        };
+       assert!(is_step_legal(&state, step));
     }
 }
