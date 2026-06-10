@@ -119,3 +119,114 @@ fn is_action_legal(gamestate: &GameState, action: Action) -> bool {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    use crate::Board;
+    use crate::StationId;
+    use crate::engine::board::TicketType;
+    use crate::TicketInventory;
+
+    fn tiny_board() -> Board {
+        Board {
+            adjacency_map: vec![
+                // Station 1
+                vec![(StationId { id: 2 }, TicketType::Taxi)],
+
+                // Station 2
+                vec![
+                    (StationId { id: 1 }, TicketType::Taxi),
+                    (StationId { id: 3 }, TicketType::Bus),
+                ],
+
+                // Station 3
+                vec![(StationId { id: 2 }, TicketType::Bus)],
+            ],
+        }
+    }
+
+    fn make_state(
+        mr_x_pos: StationId,
+        mr_x_tickets: TicketInventory,
+        detective_pos: StationId,
+    ) -> GameState<'static> {
+        let board = Box::leak(Box::new(tiny_board()));
+
+        let players = vec![
+            PlayerState::new(PlayerId::MrX, mr_x_pos, mr_x_tickets),
+            PlayerState::new(
+                PlayerId::Detective(1),
+                detective_pos,
+                TicketInventory::new(0, 0, 0, 0),
+            ),
+        ];
+
+        GameState::new(board, players)
+    }
+    
+    #[test]
+    fn assert_step_legal_valid_move() {
+        let state = make_state(
+            StationId { id: 1 },
+            TicketInventory::new(1, 0, 0, 0),
+            StationId { id: 3 },
+        );
+
+        let step = Step {
+            to: StationId { id: 2 },
+            ticket: TicketType::Taxi,
+        };
+
+        assert!(is_step_legal(&state, step));
+    }
+
+    #[test]
+    fn is_step_legal_missing_ticket() {
+        let state = make_state(
+            StationId { id: 1 },
+            TicketInventory::new(0, 0, 0, 0),
+            StationId { id: 3 },
+        );
+
+        let step = Step {
+            to: StationId { id: 2 },
+            ticket: TicketType::Taxi,
+        };
+
+        assert!(!is_step_legal(&state, step));
+    }
+
+    #[test]
+    fn is_step_legal_non_neighbor() {
+        let state = make_state(
+            StationId { id: 1 },
+            TicketInventory::new(1, 0, 0, 0),
+            StationId { id: 3 },
+        );
+
+        let step = Step {
+            to: StationId { id: 3 },
+            ticket: TicketType::Taxi,
+        };
+
+        assert!(!is_step_legal(&state, step));
+    }
+
+    #[test]
+    fn is_step_legal_target_occupied() {
+        let state = make_state(
+            StationId { id: 1 },
+            TicketInventory::new(1, 0, 0, 0),
+            StationId { id: 2 }, // detective is here
+        );
+
+        let step = Step {
+            to: StationId { id: 2 },
+            ticket: TicketType::Taxi,
+        };
+
+        assert!(!is_step_legal(&state, step));
+    }
+}

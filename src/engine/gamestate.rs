@@ -155,6 +155,4 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(inventory, before);
         }
-
-
 }

@@ -42,7 +42,7 @@ accelerate MCTS.  */
 pub struct Board {
     // 2D vector, outer is length num_nodes, inner is variable length but its a list 
     // of tuples of neighbors and the ticket required to get there
-    adjacency_map: Vec<Vec<(StationId, TicketType)>>
+    pub adjacency_map: Vec<Vec<(StationId, TicketType)>>
 }
 
 impl Board {
