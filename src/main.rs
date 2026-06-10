@@ -10,7 +10,7 @@ use engine::gamestate::PlayerState;
 use engine::gamestate::TicketInventory;
 
 fn main() {
-    let board = Board::from_connections_file();
+    let board = Board::from_connections_file(String::from("connections.txt"));
     // need to construct players
 
     let xtix = TicketInventory::new( 4,3, 3, 5);

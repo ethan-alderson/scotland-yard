@@ -8,13 +8,13 @@ use std::io::{BufRead, BufReader};
 
 // StationId is the station number on the scotland yard board
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct StationId {
     // 8-bit for 199 total nodes
     pub id: u8
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TicketType {
     Taxi,
     Bus,
@@ -52,9 +52,9 @@ impl Board {
         &self.adjacency_map[sid.id as usize - 1]
     }
 
-    pub fn from_connections_file() -> Self {
+    pub fn from_connections_file(filepath: String) -> Self {
 
-        let file = File::open("connections.txt").expect("failed to open file");
+        let file = File::open(filepath).expect("failed to open file");
         let reader = BufReader::new(file);
 
         let size: usize = 199;
@@ -65,7 +65,7 @@ impl Board {
             let line_string = line.expect("failed to parse");
             let record: Vec<&str> = line_string.split(' ').collect();
             
-            let idx: usize = record[0].parse::<usize>().unwrap();
+            let idx: usize = record[0].parse::<usize>().unwrap() - 1;
             // destination is still station id which is indexed at 1
             let dest: StationId = StationId {id: record[1].parse::<u8>().unwrap()};
             let ticket: TicketType = record[2].parse::<TicketType>().unwrap();
@@ -83,46 +83,14 @@ impl Board {
     }
 }
 
-/*
-
-The adjacency map is a Vec<Vec<(u8, TicketType)>>
-
-A line is source node, destination node, ticket type as a string. 
-
-adjacency map = vector of length 199 with empty vectors at each element
-
-for line:
-
-    s_id, d_id, ticket_str = line.split(' ')
-
-    ticket = str_to_enum(ticket_str)
-
-    adj_map[s_id - 1].push((d_id, ticket))
-
-
-
-
-
-
-
-*/
-
-
-
-
-
-
-
-
-
 
 
 /*
-Test that every node in the range exists in the adjacency map
-test that there are no out of bounds nodes
-test that there are no missing nodes
+Test that every node in the range exists in the adjacency map - DONE
+test that there are no out of bounds nodes - DONE
+test that there are no missing nodes - DONE
 
-Test that for any edge traveling one direction there is an edge in the opposite direction
+Test that for any edge traveling one direction there is an edge in the opposite direction - DONE
 
 Ensure every edge has a valid ticket type
 
@@ -130,12 +98,121 @@ No duplicate edges A -> B and A -> B
 
 */
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    fn setup_board() -> Board {
+        Board::from_connections_file(String::from("connections.txt"))
+    }
 
-//     #[test]
-//     fn foo () {
+    #[test]
+    fn assert_valid_stations () {
+        let test_board = setup_board();
 
-//     }
-// }
+        for neighbors in &test_board.adjacency_map {
+            for (station_id, _) in neighbors {
+                // assert!(station_id.id >= 0); // technically useless but in case I move away from u8s I'll keep it
+                assert!(station_id.id <= 199);
+            }
+        }
+    }
+
+    #[test]
+    fn assert_no_skipped_stations () {
+
+        let test_board = setup_board();
+
+        assert_eq!(
+            test_board.adjacency_map.len(),
+            199,
+            "Board should contain 199 stations"
+        );
+    }
+
+    #[test]
+    fn assert_no_isolated_stations() {
+        let test_board = setup_board();
+
+        for (i, neighbors) in test_board.adjacency_map.iter().enumerate() {
+            assert!(
+                !neighbors.is_empty(),
+                "Station {} has no neighbors",
+                i + 1
+            );
+        }
+    }
+
+    #[test]
+    fn assert_all_edges_bidirectional() {
+        use std::collections::HashSet;
+        
+        let board = setup_board();
+
+        // Collect all directed edges into a set
+        let mut edges = HashSet::new();
+
+        for (from_idx, neighbors) in board.adjacency_map.iter().enumerate() {
+            let from = StationId { id: from_idx as u8 + 1 };
+
+            for (to, ticket) in neighbors {
+                edges.insert((from, *to, *ticket));
+            }
+        }
+
+        // Check that every edge has a reverse edge
+        for (from, to, ticket) in &edges {
+            assert!(
+                edges.contains(&(*to, *from, *ticket)),
+                "Missing reverse edge: {:?} -> {:?} (ticket {:?})",
+                from,
+                to,
+                ticket
+            );
+        }
+    }
+
+    #[test]
+    fn assert_no_duplicate_edges() {
+        use std::collections::HashSet;
+
+        let board = setup_board();
+
+        // We track all directed edges and ensure we never see the same one twice
+        let mut seen = HashSet::new();
+
+        for (from_idx, neighbors) in board.adjacency_map.iter().enumerate() {
+            let from = StationId { id: from_idx as u8 + 1 };
+
+            for (to, ticket) in neighbors {
+                let edge = (from, *to, *ticket);
+
+                assert!(
+                    seen.insert(edge),
+                    "Duplicate edge found: {:?} -> {:?} ({:?})",
+                    from,
+                    to,
+                    ticket
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn assert_no_self_loops() {
+        let board = setup_board();
+
+        for (from_idx, neighbors) in board.adjacency_map.iter().enumerate() {
+            let from = StationId { id: from_idx as u8 + 1 };
+
+            for (to, ticket) in neighbors {
+                assert!(
+                    from != *to,
+                    "Self-loop detected at station {:?} with ticket {:?}",
+                    from,
+                    ticket
+                );
+            }
+        }
+    }
+}

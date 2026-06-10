@@ -1,6 +1,3 @@
-// Need a legal actions function that takes in a gamestate and returns a list of legal actions
-// Need a transition function that applies an action to a state
-
 use super::gamestate::GameState;
 use super::gamestate::PlayerState;
 use super::gamestate::PlayerId;

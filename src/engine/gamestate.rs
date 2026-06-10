@@ -1,4 +1,3 @@
-
 use super::board::Board;
 use super::board::TicketType;
 use super::board::StationId;
