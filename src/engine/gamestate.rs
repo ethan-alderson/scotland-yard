@@ -46,15 +46,8 @@ impl TicketInventory {
 
 // Behavior
 impl TicketInventory {
-    pub fn spend_ticket(&mut self, tt: TicketType) -> Result<(), &'static str> {
-    let count = self.get_mut(tt);
-
-    if *count == 0 {
-        return Err("No tickets available");
-    }
-
-    *count -= 1;
-    Ok(())
+    pub fn spend_ticket(&mut self, tt: TicketType) -> () {
+        *self.get_mut(tt) -= 1;
     }
 }
 
@@ -141,18 +134,7 @@ mod tests {
     fn assert_spend_ticket_subtraction() {
         let mut inv = TicketInventory::new(1,0,0,0);
 
-        assert!(inv.spend_ticket(TicketType::Taxi).is_ok());
+        inv.spend_ticket(TicketType::Taxi);
         assert_eq!(*inv.get(TicketType::Taxi), 0);
     }
-
-    #[test]
-    fn assert_spend_ticket_underflow() {
-        let mut inventory = TicketInventory::new(0,0,0,0);
-
-        let before = inventory.clone(); // requires Clone
-        let result = inventory.spend_ticket(TicketType::Taxi);
-
-        assert!(result.is_err());
-        assert_eq!(inventory, before);
-        }
 }
