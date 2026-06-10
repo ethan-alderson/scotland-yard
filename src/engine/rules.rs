@@ -49,15 +49,6 @@ fn legal_actions(gamestate: &GameState) -> Vec<Action> {
     actions
 }
 
-fn apply_action<'board>(gamestate: &GameState<'board>, action: Action) -> GameState<'board> {
-    match action {
-        Action::Single(s) => apply_step(gamestate, s),
-        Action::Double(s1, s2) => {
-            let intermediate = apply_step(gamestate, s1);
-            apply_step(&intermediate, s2)
-        }
-    }
-}
 
 fn apply_step<'board>(gamestate: &GameState<'board>, step: Step) -> GameState<'board> {
     let curr_player = &gamestate.players[gamestate.current_player];
@@ -77,6 +68,16 @@ fn apply_step<'board>(gamestate: &GameState<'board>, step: Step) -> GameState<'b
     GameState {
         players: new_players,
         ..gamestate.clone()
+    }
+}
+
+fn apply_action<'board>(gamestate: &GameState<'board>, action: Action) -> GameState<'board> {
+    match action {
+        Action::Single(s) => apply_step(gamestate, s),
+        Action::Double(s1, s2) => {
+            let intermediate = apply_step(gamestate, s1);
+            apply_step(&intermediate, s2)
+        }
     }
 }
 
