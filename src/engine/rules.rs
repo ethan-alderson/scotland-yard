@@ -45,7 +45,7 @@ pub fn legal_actions(gamestate: &GameState) -> Vec<Action> {
     actions
 }
 
-fn apply_step<'board>(gamestate: &GameState<'board>, step: Step) -> GameState<'board> {
+fn apply_step(gamestate: &GameState, step: Step) -> GameState {
     let curr_player = &gamestate.players[gamestate.current_player];
 
     let mut new_inventory = curr_player.tickets.clone();
@@ -66,7 +66,7 @@ fn apply_step<'board>(gamestate: &GameState<'board>, step: Step) -> GameState<'b
     }
 }
 
-pub fn apply_action<'board>(gamestate: &GameState<'board>, action: Action) -> GameState<'board> {
+pub fn apply_action(gamestate: &GameState, action: Action) -> GameState {
     match action {
         Action::Single(s) => apply_step(gamestate, s),
         Action::Double(s1, s2) => {
@@ -76,7 +76,7 @@ pub fn apply_action<'board>(gamestate: &GameState<'board>, action: Action) -> Ga
     }
 }
 
-fn is_step_legal<'gs, 'board>(gamestate: &'gs GameState<'board>, step: Step) -> bool {
+fn is_step_legal(gamestate: &GameState, step: Step) -> bool {
     let curr_player = &gamestate.players[gamestate.current_player];
 
     *curr_player.tickets.get(step.ticket) > 0 // current player has the required ticket
@@ -127,6 +127,8 @@ mod tests {
     use crate::engine::board::TicketType;
     use crate::TicketInventory;
 
+    use std::sync::Arc;
+
     fn tiny_board() -> Board {
         Board {
             adjacency_map: vec![
@@ -149,8 +151,8 @@ mod tests {
         mr_x_pos: StationId,
         mr_x_tickets: TicketInventory,
         detective_pos: StationId,
-    ) -> GameState<'static> {
-        let board = Box::leak(Box::new(tiny_board()));
+    ) -> GameState {
+        let board = Arc::new(tiny_board());
 
         let players = vec![
             PlayerState::new(PlayerId::MrX, mr_x_pos, mr_x_tickets),
@@ -161,7 +163,7 @@ mod tests {
             ),
         ];
 
-        GameState::new(board, players)
+        GameState::new(board.clone(), players)
     }
     
     fn branching_board() -> Board {
@@ -185,8 +187,8 @@ mod tests {
     fn make_branching_state(
         mr_x_tickets: TicketInventory,
         detective_pos: StationId,
-    ) -> GameState<'static> {
-        let board = Box::leak(Box::new(branching_board()));
+    ) -> GameState {
+        let board = Arc::new(branching_board());
 
         let players = vec![
             PlayerState::new(
@@ -201,7 +203,7 @@ mod tests {
             ),
         ];
 
-        GameState::new(board, players)
+        GameState::new(board.clone(), players)
     }
 
     fn chain_board() -> Board {
@@ -219,8 +221,8 @@ mod tests {
         }
     }
 
-    fn make_chain_state(tickets: TicketInventory) -> GameState<'static> {
-        let board = Box::leak(Box::new(chain_board()));
+    fn make_chain_state(tickets: TicketInventory) -> GameState {
+        let board = Arc::new(chain_board());
 
         let players = vec![
             PlayerState::new(
@@ -235,7 +237,7 @@ mod tests {
             ),
         ];
 
-        GameState::new(board, players)
+        GameState::new(board.clone(), players)
     }
 
     fn dead_end_board() -> Board {
@@ -247,8 +249,8 @@ mod tests {
         }
     }
 
-    fn make_dead_end_state() -> GameState<'static> {
-        let board = Box::leak(Box::new(dead_end_board()));
+    fn make_dead_end_state() -> GameState {
+        let board = Arc::new(dead_end_board());
 
         let players = vec![
             PlayerState::new(
@@ -263,11 +265,11 @@ mod tests {
             ),
         ];
 
-        GameState::new(board, players)
+        GameState::new(board.clone(), players)
     }
     
-    fn make_three_player_state() -> GameState<'static> {
-        let board = Box::leak(Box::new(tiny_board()));
+    fn make_three_player_state() -> GameState {
+        let board = Arc::new(tiny_board());
 
         let players = vec![
             PlayerState::new(
@@ -287,7 +289,7 @@ mod tests {
             ),
         ];
 
-        GameState::new(board, players)
+        GameState::new(board.clone(), players)
     }
 
     mod is_step_legal_tests {

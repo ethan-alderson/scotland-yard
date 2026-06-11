@@ -16,7 +16,7 @@ pub struct StationId {
     pub id: u8
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum TicketType {
     Taxi,
     Bus,
@@ -41,6 +41,7 @@ impl FromStr for TicketType {
 // The board struct is a graph container containing all nodes and edges
 /* We will keep edges for static construction and debugging but we'll add an adjacency map to 
 accelerate MCTS.  */
+#[derive(Serialize, Deserialize)]
 pub struct Board {
     // 2D vector, outer is length num_nodes, inner is variable length but its a list 
     // of tuples of neighbors and the ticket required to get there

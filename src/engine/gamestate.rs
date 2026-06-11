@@ -2,6 +2,8 @@ use super::board::Board;
 use super::board::TicketType;
 use super::board::StationId;
 
+use std::sync::Arc;
+
 use serde::{Serialize, Deserialize};
 
 #[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
@@ -79,11 +81,11 @@ pub enum Action {
 }
 
 #[derive(Clone)]
-pub struct GameState<'a> {
-    
+pub struct GameState {
+
     // notion of fully observable information
 
-    pub board: &'a Board,
+    pub board: Arc<Board>,
     pub players: Vec<PlayerState>,
     // The player moving as an index in the player vector
     pub current_player: usize,
@@ -98,8 +100,8 @@ pub struct GameState<'a> {
 
 }
 
-impl<'a> GameState<'a> {
-    pub fn new(board: &'a Board, players: Vec<PlayerState>) -> Self {
+impl GameState {
+    pub fn new(board: Arc<Board>, players: Vec<PlayerState>) -> Self {
         Self {
             board,
             players,
@@ -107,6 +109,23 @@ impl<'a> GameState<'a> {
             turn_number: 0,
             is_terminal: false,
             winner: None,
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct StateResponse {
+    pub current_player: usize,
+    pub players: Vec<PlayerState>,
+    pub round: usize,
+}
+
+impl From<&GameState> for StateResponse {
+    fn from(gs: &GameState) -> Self {
+        Self {
+            current_player: gs.current_player,
+            players: gs.players.clone(),
+            round: gs.turn_number,
         }
     }
 }
