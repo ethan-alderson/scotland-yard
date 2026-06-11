@@ -64,12 +64,13 @@ impl PlayerState {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Step {
     pub to: StationId,
     pub ticket: TicketType,
 }
 
+#[derive(PartialEq, Eq, Debug)]
 pub enum Action {
     Single(Step),
     Double(Step, Step),
