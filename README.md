@@ -25,5 +25,11 @@ yoink the board and station coords from https://github.com/tim-koehler/ScotlandY
 
 Build front end layer in react on top of rust API back end
 
+1. Add axum and tokio to server/Cargo.toml and get a literal "hello world" GET / route compiling
+2. Add Axum State with a dummy struct — just to see how state threading works
+3. Wire in your real GameState behind Arc<Mutex<...>>
+4. Add routes one at a time, starting with GET /game (read-only, simpler)
+5. Add POST /game/move last (write path, needs request body deserialization)
+
 
 

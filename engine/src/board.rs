@@ -92,7 +92,7 @@ mod tests {
     use super::*;
     
     fn setup_board() -> Board {
-        Board::from_connections_file(String::from("../connections.txt"))
+        Board::from_connections_file(String::from("connections.txt"))
     }
 
     #[test]
