@@ -2,7 +2,7 @@ use super::board::Board;
 use super::board::TicketType;
 use super::board::StationId;
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub enum PlayerId {
     MrX,
     Detective(u8)
@@ -51,7 +51,7 @@ impl TicketInventory {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct PlayerState {
     pub id: PlayerId,
     pub station: StationId,

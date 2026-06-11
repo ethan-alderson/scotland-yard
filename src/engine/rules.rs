@@ -267,219 +267,547 @@ mod tests {
         GameState::new(board, players)
     }
     
-    #[test]
-    fn is_step_legal_valid_move() {
-        let state = make_state(
-            StationId { id: 1 },
-            TicketInventory::new(1, 0, 0, 0),
-            StationId { id: 3 },
-        );
+    fn make_three_player_state() -> GameState<'static> {
+        let board = Box::leak(Box::new(tiny_board()));
 
-        let step = Step {
-            to: StationId { id: 2 },
-            ticket: TicketType::Taxi,
-        };
+        let players = vec![
+            PlayerState::new(
+                PlayerId::MrX,
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0),
+            ),
+            PlayerState::new(
+                PlayerId::Detective(1),
+                StationId { id: 2 },
+                TicketInventory::new(1, 0, 0, 0),
+            ),
+            PlayerState::new(
+                PlayerId::Detective(2),
+                StationId { id: 3 },
+                TicketInventory::new(1, 0, 0, 0),
+            ),
+        ];
 
-        assert!(is_step_legal(&state, step));
+        GameState::new(board, players)
     }
 
-    #[test]
-    fn is_step_legal_missing_ticket() {
-        let state = make_state(
-            StationId { id: 1 },
-            TicketInventory::new(0, 0, 0, 0),
-            StationId { id: 3 },
-        );
+    mod is_step_legal_tests {
+        use super::*;
 
-        let step = Step {
-            to: StationId { id: 2 },
-            ticket: TicketType::Taxi,
-        };
+        #[test]
+        fn is_step_legal_valid_move() {
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0),
+                StationId { id: 3 },
+            );
 
-        assert!(!is_step_legal(&state, step));
-    }
-
-    #[test]
-    fn is_step_legal_non_neighbor() {
-        let state = make_state(
-            StationId { id: 1 },
-            TicketInventory::new(1, 0, 0, 0),
-            StationId { id: 3 },
-        );
-
-        let step = Step {
-            to: StationId { id: 3 },
-            ticket: TicketType::Taxi,
-        };
-
-        assert!(!is_step_legal(&state, step));
-    }
-
-    #[test]
-    fn is_step_legal_target_detective_occupied() {
-        let state = make_state(
-            StationId { id: 1 },
-            TicketInventory::new(1, 0, 0, 0),
-            StationId { id: 2 }, // detective is here
-        );
-
-        let step = Step {
-            to: StationId { id: 2 },
-            ticket: TicketType::Taxi,
-        };
-
-        assert!(!is_step_legal(&state, step));
-    }
-
-    #[test]
-    fn is_step_legal_target_mrx_occupied() {
-        let mut state = make_state(
-            StationId { id: 1 },
-            TicketInventory::new(1, 0, 0, 0),
-            StationId { id: 2 }, // detective is here
-        );
-
-        assert_eq!(state.players[state.current_player].station.id, 1);
-
-        state.current_player = 1;
-
-        let step = Step {
-            to: StationId { id: 1 },
-            ticket: TicketType::Taxi,
-        };
-       assert!(is_step_legal(&state, step));
-    }
-
-    #[test]
-    fn legal_steps_returns_all_legal_steps() {
-        let state = make_branching_state(
-            TicketInventory::new(1, 1, 0, 0), // taxi + bus
-            StationId { id: 4 },              // not occupying either target
-        );
-
-        let steps = legal_steps(&state);
-
-        assert_eq!(steps.len(), 2);
-
-        assert!(steps.contains(&Step {
-            to: StationId { id: 2 },
-            ticket: TicketType::Taxi,
-        }));
-
-        assert!(steps.contains(&Step {
-            to: StationId { id: 3 },
-            ticket: TicketType::Bus,
-        }));
-    }
-
-    #[test]
-    fn legal_steps_filters_unavailable_tickets() {
-        let state = make_branching_state(
-            TicketInventory::new(1, 0, 0, 0), // taxi only
-            StationId { id: 4 },
-        );
-
-        let steps = legal_steps(&state);
-
-        assert_eq!(steps.len(), 1);
-
-        assert_eq!(
-            steps[0],
-            Step {
+            let step = Step {
                 to: StationId { id: 2 },
                 ticket: TicketType::Taxi,
-            }
-        );
+            };
+
+            assert!(is_step_legal(&state, step));
+        }
+
+        #[test]
+        fn is_step_legal_missing_ticket() {
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(0, 0, 0, 0),
+                StationId { id: 3 },
+            );
+
+            let step = Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            };
+
+            assert!(!is_step_legal(&state, step));
+        }
+
+        #[test]
+        fn is_step_legal_non_neighbor() {
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0),
+                StationId { id: 3 },
+            );
+
+            let step = Step {
+                to: StationId { id: 3 },
+                ticket: TicketType::Taxi,
+            };
+
+            assert!(!is_step_legal(&state, step));
+        }
+
+        #[test]
+        fn is_step_legal_target_detective_occupied() {
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0),
+                StationId { id: 2 }, // detective is here
+            );
+
+            let step = Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            };
+
+            assert!(!is_step_legal(&state, step));
+        }
+
+        #[test]
+        fn is_step_legal_target_mrx_occupied() {
+            let mut state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0),
+                StationId { id: 2 }, // detective is here
+            );
+
+            assert_eq!(state.players[state.current_player].station.id, 1);
+
+            state.current_player = 1;
+
+            let step = Step {
+                to: StationId { id: 1 },
+                ticket: TicketType::Taxi,
+            };
+        assert!(is_step_legal(&state, step));
+        }
     }
+    
+    mod legal_steps_tests {
 
-    #[test]
-    fn legal_steps_filters_occupied_detective_locations() {
-        let state = make_branching_state(
-            TicketInventory::new(1, 1, 0, 0),
-            StationId { id: 2 }, // detective occupies taxi destination
-        );
+        use super::*;
 
-        let steps = legal_steps(&state);
+        #[test]
+        fn legal_steps_returns_all_legal_steps() {
+            let state = make_branching_state(
+                TicketInventory::new(1, 1, 0, 0), // taxi + bus
+                StationId { id: 4 },              // not occupying either target
+            );
 
-        assert_eq!(steps.len(), 1);
+            let steps = legal_steps(&state);
 
-        assert_eq!(
-            steps[0],
-            Step {
+            assert_eq!(steps.len(), 2);
+
+            assert!(steps.contains(&Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            }));
+
+            assert!(steps.contains(&Step {
                 to: StationId { id: 3 },
                 ticket: TicketType::Bus,
-            }
-        );
+            }));
+        }
+
+        #[test]
+        fn legal_steps_filters_unavailable_tickets() {
+            let state = make_branching_state(
+                TicketInventory::new(1, 0, 0, 0), // taxi only
+                StationId { id: 4 },
+            );
+
+            let steps = legal_steps(&state);
+
+            assert_eq!(steps.len(), 1);
+
+            assert_eq!(
+                steps[0],
+                Step {
+                    to: StationId { id: 2 },
+                    ticket: TicketType::Taxi,
+                }
+            );
+        }
+
+        #[test]
+        fn legal_steps_filters_occupied_detective_locations() {
+            let state = make_branching_state(
+                TicketInventory::new(1, 1, 0, 0),
+                StationId { id: 2 }, // detective occupies taxi destination
+            );
+
+            let steps = legal_steps(&state);
+
+            assert_eq!(steps.len(), 1);
+
+            assert_eq!(
+                steps[0],
+                Step {
+                    to: StationId { id: 3 },
+                    ticket: TicketType::Bus,
+                }
+            );
+        }
     }
+    
+    mod legal_actions_tests {
+        
+        use super::*;
+        
+        #[test]
+        fn legal_actions_detective_only_gets_single_actions() {
+            let mut state = make_branching_state(
+                TicketInventory::new(1, 1, 0, 0),
+                StationId { id: 3 },
+            );
 
-    #[test]
-    fn legal_actions_detective_only_gets_single_actions() {
-        let mut state = make_branching_state(
-            TicketInventory::new(1, 1, 0, 0),
-            StationId { id: 3 },
-        );
+            state.current_player = 1;
 
-        state.current_player = 1;
+            let actions = legal_actions(&state);
 
-        let actions = legal_actions(&state);
+            for action in actions {
+                assert!(matches!(action, Action::Single(_)));
+            }
+        }
 
-        for action in actions {
-            assert!(matches!(action, Action::Single(_)));
+        #[test]
+        fn legal_actions_mrx_gets_double_actions() {
+            let state = make_chain_state(
+                TicketInventory::new(2, 0, 0, 0),
+            );
+
+            let actions = legal_actions(&state);
+
+            assert!(actions.contains(&Action::Single(
+                Step {
+                    to: StationId { id: 2 },
+                    ticket: TicketType::Taxi,
+                }
+            )));
+
+            assert!(actions.contains(&Action::Double(
+                Step {
+                    to: StationId { id: 2 },
+                    ticket: TicketType::Taxi,
+                },
+                Step {
+                    to: StationId { id: 3 },
+                    ticket: TicketType::Taxi,
+                }
+            )));
+        }
+
+        #[test]
+        fn legal_actions_no_double_when_second_step_impossible() {
+            let state = make_dead_end_state();
+
+            let actions = legal_actions(&state);
+
+            assert_eq!(actions.len(), 1);
+
+            assert!(matches!(actions[0], Action::Single(_)));
+
+            assert!(
+                !actions.iter().any(|a| matches!(a, Action::Double(_, _)))
+            );
+        }
+
+        #[test]
+        fn legal_actions_mrx_cannot_double_with_only_one_ticket() {
+            let state = make_chain_state(
+                TicketInventory::new(1, 0, 0, 0),
+            );
+
+            let actions = legal_actions(&state);
+
+            assert!(
+                !actions.iter().any(|a| matches!(a, Action::Double(_, _)))
+            );
+        }
+
+    }
+    
+    mod apply_step_tests {
+        
+        use super::*;
+        
+        #[test]
+        fn apply_step_updates_player_position() {
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0),
+                StationId { id: 3 },
+            );
+
+            let step = Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            };
+
+            let new_state = apply_step(&state, step);
+
+            assert_eq!(new_state.players[0].station.id, 2);
+        }
+
+        #[test]
+        fn apply_step_spends_ticket() {
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(2, 0, 0, 0),
+                StationId { id: 3 },
+            );
+
+            let step = Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            };
+
+            let new_state = apply_step(&state, step);
+
+            assert_eq!(
+                *new_state.players[0].tickets.get(TicketType::Taxi),
+                1
+            );
+        }
+
+        #[test]
+        fn apply_step_leaves_other_players_unchanged() {
+            let state = make_three_player_state();
+
+            let step = Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            };
+
+            let new_state = apply_step(&state, step);
+
+            assert_eq!(state.players[1], new_state.players[1]);
+            assert_eq!(state.players[2], new_state.players[2]);
+        }
+
+        #[test]
+        fn apply_step_does_not_modify_original_state() {
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0),
+                StationId { id: 3 },
+            );
+
+            let step = Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            };
+
+            let new_state = apply_step(&state, step);
+
+            assert_eq!(state.players[0].station.id, 1);
+            assert_eq!(new_state.players[0].station.id, 2);
         }
     }
 
-    #[test]
-    fn legal_actions_mrx_gets_double_actions() {
-        let state = make_chain_state(
-            TicketInventory::new(2, 0, 0, 0),
-        );
+    mod apply_action_tests {
+        
+        use super::*;
 
-        let actions = legal_actions(&state);
+        #[test]
+        fn apply_action_single_matches_apply_step() {
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0),
+                StationId { id: 3 },
+            );
 
-        assert!(actions.contains(&Action::Single(
-            Step {
+            let step = Step {
                 to: StationId { id: 2 },
                 ticket: TicketType::Taxi,
-            }
-        )));
+            };
 
-        assert!(actions.contains(&Action::Double(
-            Step {
+            let via_step = apply_step(&state, step);
+            let via_action = apply_action(&state, Action::Single(step));
+
+            assert_eq!(via_step.players, via_action.players);
+        }
+
+        #[test]
+        fn apply_action_double_reaches_final_station() {
+            let state = make_chain_state(
+                TicketInventory::new(2, 0, 0, 0),
+            );
+
+            let action = Action::Double(
+                Step {
+                    to: StationId { id: 2 },
+                    ticket: TicketType::Taxi,
+                },
+                Step {
+                    to: StationId { id: 3 },
+                    ticket: TicketType::Taxi,
+                },
+            );
+
+            let new_state = apply_action(&state, action);
+
+            assert_eq!(new_state.players[0].station.id, 3);
+        }
+
+        #[test]
+        fn apply_action_double_consumes_two_tickets() {
+            let state = make_chain_state(
+                TicketInventory::new(2, 0, 0, 0),
+            );
+
+            let action = Action::Double(
+                Step {
+                    to: StationId { id: 2 },
+                    ticket: TicketType::Taxi,
+                },
+                Step {
+                    to: StationId { id: 3 },
+                    ticket: TicketType::Taxi,
+                },
+            );
+
+            let new_state = apply_action(&state, action);
+
+            assert_eq!(
+                *new_state.players[0].tickets.get(TicketType::Taxi),
+                0
+            );
+        }
+    }
+
+    mod is_action_legal_tests {
+        
+        use super::*;
+
+        #[test]
+        fn is_action_legal_terminal_state_rejects_all_actions() {
+            let mut state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0),
+                StationId { id: 3 },
+            );
+
+            state.is_terminal = true;
+
+            let action = Action::Single(Step {
                 to: StationId { id: 2 },
                 ticket: TicketType::Taxi,
-            },
-            Step {
-                to: StationId { id: 3 },
+            });
+
+            assert!(!is_action_legal(&state, action));
+        }
+
+        #[test]
+        fn is_action_legal_detective_single_legal() {
+            let mut state = make_state(
+                StationId { id: 1 }, // Mr X
+                TicketInventory::new(1, 0, 0, 0),
+                StationId { id: 2 }, // Detective
+            );
+
+            state.current_player = 1;
+
+            let action = Action::Single(Step {
+                to: StationId { id: 1 },
                 ticket: TicketType::Taxi,
-            }
-        )));
-    }
+            });
 
-    #[test]
-    fn legal_actions_no_double_when_second_step_impossible() {
-        let state = make_dead_end_state();
+            assert!(is_action_legal(&state, action));
+        }
 
-        let actions = legal_actions(&state);
+        #[test]
+        fn is_action_legal_detective_double_illegal() {
+            let mut state = make_chain_state(
+                TicketInventory::new(2, 0, 0, 0),
+            );
 
-        assert_eq!(actions.len(), 1);
+            state.current_player = 1;
 
-        assert!(matches!(actions[0], Action::Single(_)));
+            let action = Action::Double(
+                Step {
+                    to: StationId { id: 2 },
+                    ticket: TicketType::Taxi,
+                },
+                Step {
+                    to: StationId { id: 3 },
+                    ticket: TicketType::Taxi,
+                },
+            );
 
-        assert!(
-            !actions.iter().any(|a| matches!(a, Action::Double(_, _)))
-        );
-    }
+            assert!(!is_action_legal(&state, action));
+        }
 
-    #[test]
-    fn legal_actions_mrx_cannot_double_with_only_one_ticket() {
-        let state = make_chain_state(
-            TicketInventory::new(1, 0, 0, 0),
-        );
+        #[test]
+        fn is_action_legal_mrx_single_legal() {
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0),
+                StationId { id: 3 },
+            );
 
-        let actions = legal_actions(&state);
+            let action = Action::Single(Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            });
 
-        assert!(
-            !actions.iter().any(|a| matches!(a, Action::Double(_, _)))
-        );
+            assert!(is_action_legal(&state, action));
+        }
+
+        #[test]
+        fn is_action_legal_mrx_double_legal() {
+            let state = make_chain_state(
+                TicketInventory::new(2, 0, 0, 0),
+            );
+
+            let action = Action::Double(
+                Step {
+                    to: StationId { id: 2 },
+                    ticket: TicketType::Taxi,
+                },
+                Step {
+                    to: StationId { id: 3 },
+                    ticket: TicketType::Taxi,
+                },
+            );
+
+            assert!(is_action_legal(&state, action));
+        }
+
+        #[test]
+        fn is_action_legal_mrx_double_illegal_first_step() {
+            let state = make_chain_state(
+                TicketInventory::new(2, 0, 0, 0),
+            );
+
+            let action = Action::Double(
+                Step {
+                    to: StationId { id: 3 }, // not adjacent from 1
+                    ticket: TicketType::Taxi,
+                },
+                Step {
+                    to: StationId { id: 2 },
+                    ticket: TicketType::Taxi,
+                },
+            );
+
+            assert!(!is_action_legal(&state, action));
+        }
+
+        #[test]
+        fn is_action_legal_mrx_double_illegal_second_step() {
+            let state = make_chain_state(
+                TicketInventory::new(2, 0, 0, 0),
+            );
+
+            let action = Action::Double(
+                Step {
+                    to: StationId { id: 2 },
+                    ticket: TicketType::Taxi,
+                },
+                Step {
+                    to: StationId { id: 1 }, // requires moving back from 2
+                    ticket: TicketType::Bus, // wrong ticket
+                },
+            );
+
+            assert!(!is_action_legal(&state, action));
+        }
+
     }
 }
