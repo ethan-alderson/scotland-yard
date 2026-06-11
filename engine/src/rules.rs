@@ -122,10 +122,10 @@ fn is_action_legal(gamestate: &GameState, action: Action) -> bool {
 mod tests {
     use super::*;
     
-    use crate::Board;
-    use crate::StationId;
-    use crate::engine::board::TicketType;
-    use crate::TicketInventory;
+    use crate::board::Board;
+    use crate::board::StationId;
+    use crate::board::TicketType;
+    use crate::gamestate::TicketInventory;
 
     use std::sync::Arc;
 

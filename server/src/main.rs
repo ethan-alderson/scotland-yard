@@ -1,5 +1,3 @@
-mod engine;
-
 use std::sync::Arc;
 
 use engine::board::Board;
