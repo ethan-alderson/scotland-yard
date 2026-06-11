@@ -70,7 +70,7 @@ pub struct Step {
     pub ticket: TicketType,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Action {
     Single(Step),
     Double(Step, Step),

@@ -810,4 +810,59 @@ mod tests {
         }
 
     }
+
+    mod legality_invariant_tests {
+        use super::*;
+
+        #[test]
+        fn legal_actions_are_all_legal() {
+            let state = make_chain_state(
+                TicketInventory::new(2, 0, 0, 0),
+            );
+
+            for action in legal_actions(&state) {
+                assert!(
+                    is_action_legal(&state, action),
+                    "Generated action was not legal: {:?}",
+                    action
+                );
+            }
+        }
+
+        #[test]
+        fn legal_actions_are_all_legal_branching_board() {
+            let state = make_branching_state(
+                TicketInventory::new(1, 1, 0, 0),
+                StationId { id: 4 },
+            );
+
+            for action in legal_actions(&state) {
+                assert!(
+                    is_action_legal(&state, action),
+                    "Generated action was not legal: {:?}",
+                    action
+                );
+            }
+        }
+
+        #[test]
+        fn applying_legal_actions_only_changes_current_player() {
+            let state = make_three_player_state();
+
+            for action in legal_actions(&state) {
+                let next = apply_action(&state, action);
+
+                for i in 0..state.players.len() {
+                    if i == state.current_player {
+                        continue;
+                    }
+
+                    assert_eq!(
+                        state.players[i],
+                        next.players[i]
+                    );
+                }
+            }
+        }
+    }
 }
