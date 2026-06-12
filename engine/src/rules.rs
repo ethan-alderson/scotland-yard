@@ -60,6 +60,14 @@ fn apply_step(gamestate: &GameState, step: Step) -> GameState {
     let mut new_players = gamestate.players.clone();
     new_players[gamestate.current_player] = new_pose;
 
+    if matches!(curr_player.id, PlayerId::Detective(_)) {
+        let mrx_idx = new_players
+            .iter()
+            .position(|p| matches!(p.id, PlayerId::MrX))
+            .expect("no MrX in players");
+        new_players[mrx_idx].tickets.add_ticket(step.ticket);
+    }
+
     GameState {
         players: new_players,
         ..gamestate.clone()
@@ -67,13 +75,53 @@ fn apply_step(gamestate: &GameState, step: Step) -> GameState {
 }
 
 pub fn apply_action(gamestate: &GameState, action: Action) -> GameState {
-    match action {
+    let mut new_state = match action {
         Action::Single(s) => apply_step(gamestate, s),
         Action::Double(s1, s2) => {
             let intermediate = apply_step(gamestate, s1);
             apply_step(&intermediate, s2)
         }
+    };
+
+    let next_player = (new_state.current_player + 1) % new_state.players.len();
+    new_state.current_player = next_player;
+    if next_player == 0 {
+        new_state.turn_number += 1;
     }
+
+    // Terminal: a detective landed on MrX's station.
+    let mrx_station = new_state.players.iter()
+        .find(|p| matches!(p.id, PlayerId::MrX))
+        .map(|p| p.station);
+
+    if let Some(mrx_station) = mrx_station {
+        if new_state.players.iter().any(|p| {
+            matches!(p.id, PlayerId::Detective(_)) && p.station == mrx_station
+        }) {
+            new_state.is_terminal = true;
+            new_state.winner = Some(PlayerId::Detectives);
+            return new_state;
+        }
+    }
+
+    // Remaining checks only apply when a full round just completed (MrX's turn next).
+    if next_player == 0 {
+        // Terminal: turn limit reached, MrX wins.
+        if new_state.turn_number >= new_state.max_turns {
+            new_state.is_terminal = true;
+            new_state.winner = Some(PlayerId::MrX);
+            return new_state;
+        }
+
+        // Terminal: MrX has no legal moves, detectives win.
+        if legal_actions(&new_state).is_empty() {
+            new_state.is_terminal = true;
+            new_state.winner = Some(PlayerId::Detectives);
+            return new_state;
+        }
+    }
+
+    new_state
 }
 
 fn is_step_legal(gamestate: &GameState, step: Step) -> bool {
@@ -97,12 +145,13 @@ fn is_action_legal(gamestate: &GameState, action: Action) -> bool {
     let curr_player: &PlayerId = &gamestate.players[gamestate.current_player].id;
 
     match curr_player {
-        PlayerId::Detective(n) => {
+        PlayerId::Detective(_) => {
             match action {
                 Action::Single(s) => is_step_legal(gamestate, s),
-                Action::Double(s1,s2 ) => false
+                Action::Double(_, _) => false
             }
         }
+        PlayerId::Detectives => false,
         PlayerId::MrX => {
             match action {
                 Action::Single(s) => is_step_legal(gamestate, s),
@@ -159,7 +208,7 @@ mod tests {
             PlayerState::new(
                 PlayerId::Detective(1),
                 detective_pos,
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
             ),
         ];
 
@@ -199,7 +248,7 @@ mod tests {
             PlayerState::new(
                 PlayerId::Detective(1),
                 detective_pos,
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
             ),
         ];
 
@@ -233,7 +282,7 @@ mod tests {
             PlayerState::new(
                 PlayerId::Detective(1),
                 StationId { id: 4 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
             ),
         ];
 
@@ -256,12 +305,12 @@ mod tests {
             PlayerState::new(
                 PlayerId::MrX,
                 StationId { id: 1 },
-                TicketInventory::new(2, 0, 0, 0),
+                TicketInventory::new(2, 0, 0, 0, 0),
             ),
             PlayerState::new(
                 PlayerId::Detective(1),
                 StationId { id: 3 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
             ),
         ];
 
@@ -275,17 +324,17 @@ mod tests {
             PlayerState::new(
                 PlayerId::MrX,
                 StationId { id: 1 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
             ),
             PlayerState::new(
                 PlayerId::Detective(1),
                 StationId { id: 2 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
             ),
             PlayerState::new(
                 PlayerId::Detective(2),
                 StationId { id: 3 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
             ),
         ];
 
@@ -299,7 +348,7 @@ mod tests {
         fn is_step_legal_valid_move() {
             let state = make_state(
                 StationId { id: 1 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
                 StationId { id: 3 },
             );
 
@@ -315,7 +364,7 @@ mod tests {
         fn is_step_legal_missing_ticket() {
             let state = make_state(
                 StationId { id: 1 },
-                TicketInventory::new(0, 0, 0, 0),
+                TicketInventory::new(0, 0, 0, 0, 0),
                 StationId { id: 3 },
             );
 
@@ -331,7 +380,7 @@ mod tests {
         fn is_step_legal_non_neighbor() {
             let state = make_state(
                 StationId { id: 1 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
                 StationId { id: 3 },
             );
 
@@ -347,7 +396,7 @@ mod tests {
         fn is_step_legal_target_detective_occupied() {
             let state = make_state(
                 StationId { id: 1 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
                 StationId { id: 2 }, // detective is here
             );
 
@@ -363,7 +412,7 @@ mod tests {
         fn is_step_legal_target_mrx_occupied() {
             let mut state = make_state(
                 StationId { id: 1 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
                 StationId { id: 2 }, // detective is here
             );
 
@@ -386,7 +435,7 @@ mod tests {
         #[test]
         fn legal_steps_returns_all_legal_steps() {
             let state = make_branching_state(
-                TicketInventory::new(1, 1, 0, 0), // taxi + bus
+                TicketInventory::new(1, 1, 0, 0, 0), // taxi + bus
                 StationId { id: 4 },              // not occupying either target
             );
 
@@ -408,7 +457,7 @@ mod tests {
         #[test]
         fn legal_steps_filters_unavailable_tickets() {
             let state = make_branching_state(
-                TicketInventory::new(1, 0, 0, 0), // taxi only
+                TicketInventory::new(1, 0, 0, 0, 0), // taxi only
                 StationId { id: 4 },
             );
 
@@ -428,7 +477,7 @@ mod tests {
         #[test]
         fn legal_steps_filters_occupied_detective_locations() {
             let state = make_branching_state(
-                TicketInventory::new(1, 1, 0, 0),
+                TicketInventory::new(1, 1, 0, 0, 0),
                 StationId { id: 2 }, // detective occupies taxi destination
             );
 
@@ -453,7 +502,7 @@ mod tests {
         #[test]
         fn legal_actions_detective_only_gets_single_actions() {
             let mut state = make_branching_state(
-                TicketInventory::new(1, 1, 0, 0),
+                TicketInventory::new(1, 1, 0, 0, 0),
                 StationId { id: 3 },
             );
 
@@ -469,7 +518,7 @@ mod tests {
         #[test]
         fn legal_actions_mrx_gets_double_actions() {
             let state = make_chain_state(
-                TicketInventory::new(2, 0, 0, 0),
+                TicketInventory::new(2, 0, 0, 0, 0),
             );
 
             let actions = legal_actions(&state);
@@ -511,7 +560,7 @@ mod tests {
         #[test]
         fn legal_actions_mrx_cannot_double_with_only_one_ticket() {
             let state = make_chain_state(
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
             );
 
             let actions = legal_actions(&state);
@@ -531,7 +580,7 @@ mod tests {
         fn apply_step_updates_player_position() {
             let state = make_state(
                 StationId { id: 1 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
                 StationId { id: 3 },
             );
 
@@ -549,7 +598,7 @@ mod tests {
         fn apply_step_spends_ticket() {
             let state = make_state(
                 StationId { id: 1 },
-                TicketInventory::new(2, 0, 0, 0),
+                TicketInventory::new(2, 0, 0, 0, 0),
                 StationId { id: 3 },
             );
 
@@ -585,7 +634,7 @@ mod tests {
         fn apply_step_does_not_modify_original_state() {
             let state = make_state(
                 StationId { id: 1 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
                 StationId { id: 3 },
             );
 
@@ -599,6 +648,49 @@ mod tests {
             assert_eq!(state.players[0].station.id, 1);
             assert_eq!(new_state.players[0].station.id, 2);
         }
+
+        #[test]
+        fn apply_step_detective_ticket_transferred_to_mrx() {
+            // Detective at station 3 moves to station 2 (bus); MrX at station 1.
+            // tiny_board: 3 <-bus-> 2 <-taxi-> 1
+            let board = Arc::new(tiny_board());
+            let players = vec![
+                PlayerState::new(
+                    PlayerId::MrX,
+                    StationId { id: 1 },
+                    TicketInventory::new(0, 0, 0, 0, 0),
+                ),
+                PlayerState::new(
+                    PlayerId::Detective(1),
+                    StationId { id: 3 },
+                    TicketInventory::new(0, 1, 0, 0, 0),
+                ),
+            ];
+            let mut state = GameState::new(board, players);
+            state.current_player = 1;
+
+            let step = Step { to: StationId { id: 2 }, ticket: TicketType::Bus };
+            let new_state = apply_step(&state, step);
+
+            assert_eq!(*new_state.players[1].tickets.get(TicketType::Bus), 0);
+            assert_eq!(*new_state.players[0].tickets.get(TicketType::Bus), 1);
+        }
+
+        #[test]
+        fn apply_step_mrx_ticket_not_transferred() {
+            // MrX moves; his spent ticket should not be added back to anyone.
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(2, 0, 0, 0, 0),
+                StationId { id: 3 },
+            );
+
+            let step = Step { to: StationId { id: 2 }, ticket: TicketType::Taxi };
+            let new_state = apply_step(&state, step);
+
+            assert_eq!(*new_state.players[0].tickets.get(TicketType::Taxi), 1);
+            assert_eq!(*new_state.players[1].tickets.get(TicketType::Taxi), 1);
+        }
     }
 
     mod apply_action_tests {
@@ -609,7 +701,7 @@ mod tests {
         fn apply_action_single_matches_apply_step() {
             let state = make_state(
                 StationId { id: 1 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
                 StationId { id: 3 },
             );
 
@@ -627,7 +719,7 @@ mod tests {
         #[test]
         fn apply_action_double_reaches_final_station() {
             let state = make_chain_state(
-                TicketInventory::new(2, 0, 0, 0),
+                TicketInventory::new(2, 0, 0, 0, 0),
             );
 
             let action = Action::Double(
@@ -649,7 +741,7 @@ mod tests {
         #[test]
         fn apply_action_double_consumes_two_tickets() {
             let state = make_chain_state(
-                TicketInventory::new(2, 0, 0, 0),
+                TicketInventory::new(2, 0, 0, 0, 0),
             );
 
             let action = Action::Double(
@@ -670,6 +762,201 @@ mod tests {
                 0
             );
         }
+
+        #[test]
+        fn apply_action_advances_current_player() {
+            // MrX is player 0; after his action current_player should be 1.
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0, 0),
+                StationId { id: 3 },
+            );
+            assert_eq!(state.current_player, 0);
+
+            let new_state = apply_action(&state, Action::Single(Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            }));
+
+            assert_eq!(new_state.current_player, 1);
+        }
+
+        #[test]
+        fn apply_action_wraps_current_player_to_zero() {
+            // Detective is the last player; after his action current_player wraps to 0.
+            let mut state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0, 0),
+                StationId { id: 3 },
+            );
+            state.current_player = 1;
+
+            let new_state = apply_action(&state, Action::Single(Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            }));
+
+            assert_eq!(new_state.current_player, 0);
+        }
+
+        #[test]
+        fn apply_action_increments_turn_number_on_wrap() {
+            // Wrapping back to player 0 should increment turn_number.
+            let mut state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0, 0),
+                StationId { id: 3 },
+            );
+            state.current_player = 1;
+            assert_eq!(state.turn_number, 0);
+
+            let new_state = apply_action(&state, Action::Single(Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            }));
+
+            assert_eq!(new_state.turn_number, 1);
+        }
+
+        #[test]
+        fn apply_action_does_not_increment_turn_number_mid_round() {
+            // Advancing from player 0 to player 1 should not increment turn_number.
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0, 0),
+                StationId { id: 3 },
+            );
+            assert_eq!(state.turn_number, 0);
+
+            let new_state = apply_action(&state, Action::Single(Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            }));
+
+            assert_eq!(new_state.turn_number, 0);
+        }
+
+        #[test]
+        fn apply_action_double_advances_current_player_once() {
+            // A double move involves two apply_step calls internally but must only
+            // advance current_player once.
+            let state = make_chain_state(TicketInventory::new(2, 0, 0, 0, 0));
+            assert_eq!(state.current_player, 0);
+
+            let new_state = apply_action(&state, Action::Double(
+                Step { to: StationId { id: 2 }, ticket: TicketType::Taxi },
+                Step { to: StationId { id: 3 }, ticket: TicketType::Taxi },
+            ));
+
+            assert_eq!(new_state.current_player, 1);
+        }
+
+        // Step 4: detective catches MrX
+        #[test]
+        fn apply_action_detective_catches_mrx_sets_terminal() {
+            // tiny_board: 1 <-taxi-> 2 <-bus-> 3
+            // MrX at 2, detective at 1; detective taxis to 2 and catches MrX.
+            let board = Arc::new(tiny_board());
+            let players = vec![
+                PlayerState::new(PlayerId::MrX, StationId { id: 2 }, TicketInventory::new(0, 0, 0, 0, 0)),
+                PlayerState::new(PlayerId::Detective(1), StationId { id: 1 }, TicketInventory::new(1, 0, 0, 0, 0)),
+            ];
+            let mut state = GameState::new(board, players);
+            state.current_player = 1;
+
+            let new_state = apply_action(&state, Action::Single(
+                Step { to: StationId { id: 2 }, ticket: TicketType::Taxi },
+            ));
+
+            assert!(new_state.is_terminal);
+            assert_eq!(new_state.winner, Some(PlayerId::Detectives));
+        }
+
+        #[test]
+        fn apply_action_non_catching_move_not_terminal() {
+            // MrX moves away from the detective; nobody shares a station so the
+            // game must not be marked terminal.
+            // tiny_board: 1 <-taxi-> 2 <-bus-> 3. Detective is at 3 (far away).
+            let state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0, 0),
+                StationId { id: 3 },
+            );
+
+            let new_state = apply_action(&state, Action::Single(
+                Step { to: StationId { id: 2 }, ticket: TicketType::Taxi },
+            ));
+
+            assert!(!new_state.is_terminal);
+            assert_eq!(new_state.winner, None);
+        }
+
+        // Step 5: MrX cornered
+        #[test]
+        fn apply_action_mrx_cornered_detectives_win() {
+            // MrX at station 1 with no tickets; after the detective completes
+            // the round, MrX has no legal moves and detectives win.
+            // Station 1 only connects via taxi, which MrX does not have.
+            // The detective bus ticket transferred to MrX on move is unusable
+            // from station 1 (no bus edges there).
+            let board = Arc::new(tiny_board());
+            let players = vec![
+                PlayerState::new(PlayerId::MrX, StationId { id: 1 }, TicketInventory::new(0, 0, 0, 0, 0)),
+                PlayerState::new(PlayerId::Detective(1), StationId { id: 3 }, TicketInventory::new(0, 1, 0, 0, 0)),
+            ];
+            let mut state = GameState::new(board, players);
+            state.current_player = 1;
+
+            let new_state = apply_action(&state, Action::Single(
+                Step { to: StationId { id: 2 }, ticket: TicketType::Bus },
+            ));
+
+            assert!(new_state.is_terminal);
+            assert_eq!(new_state.winner, Some(PlayerId::Detectives));
+        }
+
+        // Step 6: turn limit
+        #[test]
+        fn apply_action_turn_limit_mrx_wins() {
+            // With max_turns = 1, completing the first round makes MrX the winner.
+            // Detective needs a bus ticket to move from 3 to 2 on tiny_board.
+            let board = Arc::new(tiny_board());
+            let players = vec![
+                PlayerState::new(PlayerId::MrX, StationId { id: 1 }, TicketInventory::new(1, 0, 0, 0, 0)),
+                PlayerState::new(PlayerId::Detective(1), StationId { id: 3 }, TicketInventory::new(0, 1, 0, 0, 0)),
+            ];
+            let mut state = GameState::new(board, players);
+            state.max_turns = 1;
+            state.current_player = 1; // jump to the detective's move to complete turn 0
+
+            let new_state = apply_action(&state, Action::Single(
+                Step { to: StationId { id: 2 }, ticket: TicketType::Bus },
+            ));
+
+            // turn_number is now 1 >= max_turns 1, MrX wins
+            assert!(new_state.is_terminal);
+            assert_eq!(new_state.winner, Some(PlayerId::MrX));
+        }
+
+        #[test]
+        fn apply_action_mid_round_does_not_trigger_turn_limit() {
+            // Even if turn_number would equal max_turns after a mid-round advance,
+            // the check only fires when the round fully completes (next_player == 0).
+            let mut state = make_state(
+                StationId { id: 1 },
+                TicketInventory::new(1, 0, 0, 0, 0),
+                StationId { id: 3 },
+            );
+            state.max_turns = 1;
+            // current_player is 0 (MrX); his move advances to player 1, not 0.
+
+            let new_state = apply_action(&state, Action::Single(
+                Step { to: StationId { id: 2 }, ticket: TicketType::Taxi },
+            ));
+
+            assert!(!new_state.is_terminal);
+            assert_eq!(new_state.winner, None);
+        }
     }
 
     mod is_action_legal_tests {
@@ -680,7 +967,7 @@ mod tests {
         fn is_action_legal_terminal_state_rejects_all_actions() {
             let mut state = make_state(
                 StationId { id: 1 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
                 StationId { id: 3 },
             );
 
@@ -698,7 +985,7 @@ mod tests {
         fn is_action_legal_detective_single_legal() {
             let mut state = make_state(
                 StationId { id: 1 }, // Mr X
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
                 StationId { id: 2 }, // Detective
             );
 
@@ -715,7 +1002,7 @@ mod tests {
         #[test]
         fn is_action_legal_detective_double_illegal() {
             let mut state = make_chain_state(
-                TicketInventory::new(2, 0, 0, 0),
+                TicketInventory::new(2, 0, 0, 0, 0),
             );
 
             state.current_player = 1;
@@ -738,7 +1025,7 @@ mod tests {
         fn is_action_legal_mrx_single_legal() {
             let state = make_state(
                 StationId { id: 1 },
-                TicketInventory::new(1, 0, 0, 0),
+                TicketInventory::new(1, 0, 0, 0, 0),
                 StationId { id: 3 },
             );
 
@@ -753,7 +1040,7 @@ mod tests {
         #[test]
         fn is_action_legal_mrx_double_legal() {
             let state = make_chain_state(
-                TicketInventory::new(2, 0, 0, 0),
+                TicketInventory::new(2, 0, 0, 0, 0),
             );
 
             let action = Action::Double(
@@ -773,7 +1060,7 @@ mod tests {
         #[test]
         fn is_action_legal_mrx_double_illegal_first_step() {
             let state = make_chain_state(
-                TicketInventory::new(2, 0, 0, 0),
+                TicketInventory::new(2, 0, 0, 0, 0),
             );
 
             let action = Action::Double(
@@ -793,7 +1080,7 @@ mod tests {
         #[test]
         fn is_action_legal_mrx_double_illegal_second_step() {
             let state = make_chain_state(
-                TicketInventory::new(2, 0, 0, 0),
+                TicketInventory::new(2, 0, 0, 0, 0),
             );
 
             let action = Action::Double(
@@ -810,6 +1097,34 @@ mod tests {
             assert!(!is_action_legal(&state, action));
         }
 
+        #[test]
+        fn is_action_legal_detectives_player_id_always_false() {
+            let board = Arc::new(tiny_board());
+            let mut state = GameState::new(
+                board,
+                vec![
+                    PlayerState::new(
+                        PlayerId::Detectives,
+                        StationId { id: 1 },
+                        TicketInventory::new(1, 0, 0, 0, 0),
+                    ),
+                ],
+            );
+            state.current_player = 0;
+
+            let single = Action::Single(Step {
+                to: StationId { id: 2 },
+                ticket: TicketType::Taxi,
+            });
+            let double = Action::Double(
+                Step { to: StationId { id: 2 }, ticket: TicketType::Taxi },
+                Step { to: StationId { id: 1 }, ticket: TicketType::Taxi },
+            );
+
+            assert!(!is_action_legal(&state, single));
+            assert!(!is_action_legal(&state, double));
+        }
+
     }
 
     mod legality_invariant_tests {
@@ -818,7 +1133,7 @@ mod tests {
         #[test]
         fn legal_actions_are_all_legal() {
             let state = make_chain_state(
-                TicketInventory::new(2, 0, 0, 0),
+                TicketInventory::new(2, 0, 0, 0, 0),
             );
 
             for action in legal_actions(&state) {
@@ -833,7 +1148,7 @@ mod tests {
         #[test]
         fn legal_actions_are_all_legal_branching_board() {
             let state = make_branching_state(
-                TicketInventory::new(1, 1, 0, 0),
+                TicketInventory::new(1, 1, 0, 0, 0),
                 StationId { id: 4 },
             );
 

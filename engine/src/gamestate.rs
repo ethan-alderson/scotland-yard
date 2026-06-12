@@ -9,7 +9,8 @@ use serde::{Serialize, Deserialize};
 #[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum PlayerId {
     MrX,
-    Detective(u8)
+    Detective(u8),
+    Detectives,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -17,13 +18,14 @@ pub struct TicketInventory {
     taxi: u8,
     bus: u8,
     underground: u8,
-    black: u8
+    black: u8,
+    pub double: u8,
 }
 
 // CONSTRUCTORS
 impl TicketInventory {
-    pub fn new(taxi: u8, bus: u8, underground: u8, black: u8) -> Self {
-        Self { taxi, bus, underground, black }
+    pub fn new(taxi: u8, bus: u8, underground: u8, black: u8, double: u8) -> Self {
+        Self { taxi, bus, underground, black, double }
     }
 }
 
@@ -50,8 +52,16 @@ impl TicketInventory {
 
 // Behavior
 impl TicketInventory {
-    pub fn spend_ticket(&mut self, tt: TicketType) -> () {
+    pub fn spend_ticket(&mut self, tt: TicketType) {
         *self.get_mut(tt) -= 1;
+    }
+
+    pub fn add_ticket(&mut self, tt: TicketType) {
+        *self.get_mut(tt) += 1;
+    }
+
+    pub fn spend_double(&mut self) {
+        self.double -= 1;
     }
 }
 
@@ -95,6 +105,7 @@ pub struct GameState {
 
     pub is_terminal: bool,
     pub winner: Option<PlayerId>,
+    pub max_turns: usize,
 
     // Some notion of move history for debugging can be added later
 
@@ -109,6 +120,7 @@ impl GameState {
             turn_number: 0,
             is_terminal: false,
             winner: None,
+            max_turns: 22,
         }
     }
 }
@@ -144,19 +156,65 @@ mod tests {
 
     #[test]
     fn assert_ticket_get() {
-        let inv = TicketInventory::new(1,2,3,4);
+        let inv = TicketInventory::new(1, 2, 3, 4, 5);
 
         assert_eq!(*inv.get(TicketType::Taxi), 1);
         assert_eq!(*inv.get(TicketType::Bus), 2);
         assert_eq!(*inv.get(TicketType::Underground), 3);
         assert_eq!(*inv.get(TicketType::Black), 4);
+        assert_eq!(inv.double, 5);
     }
 
     #[test]
     fn assert_spend_ticket_subtraction() {
-        let mut inv = TicketInventory::new(1,0,0,0);
+        let mut inv = TicketInventory::new(1, 0, 0, 0, 0);
 
         inv.spend_ticket(TicketType::Taxi);
         assert_eq!(*inv.get(TicketType::Taxi), 0);
+    }
+
+    #[test]
+    fn add_ticket_increments_taxi() {
+        let mut inv = TicketInventory::new(0, 0, 0, 0, 0);
+        inv.add_ticket(TicketType::Taxi);
+        assert_eq!(*inv.get(TicketType::Taxi), 1);
+    }
+
+    #[test]
+    fn add_ticket_increments_bus() {
+        let mut inv = TicketInventory::new(0, 0, 0, 0, 0);
+        inv.add_ticket(TicketType::Bus);
+        assert_eq!(*inv.get(TicketType::Bus), 1);
+    }
+
+    #[test]
+    fn add_ticket_increments_underground() {
+        let mut inv = TicketInventory::new(0, 0, 0, 0, 0);
+        inv.add_ticket(TicketType::Underground);
+        assert_eq!(*inv.get(TicketType::Underground), 1);
+    }
+
+    #[test]
+    fn add_ticket_increments_black() {
+        let mut inv = TicketInventory::new(0, 0, 0, 0, 0);
+        inv.add_ticket(TicketType::Black);
+        assert_eq!(*inv.get(TicketType::Black), 1);
+    }
+
+    #[test]
+    fn spend_double_decrements_count() {
+        let mut inv = TicketInventory::new(0, 0, 0, 0, 2);
+        inv.spend_double();
+        assert_eq!(inv.double, 1);
+    }
+
+    #[test]
+    fn add_ticket_does_not_affect_other_tickets() {
+        let mut inv = TicketInventory::new(1, 1, 1, 1, 1);
+        inv.add_ticket(TicketType::Taxi);
+        assert_eq!(*inv.get(TicketType::Bus), 1);
+        assert_eq!(*inv.get(TicketType::Underground), 1);
+        assert_eq!(*inv.get(TicketType::Black), 1);
+        assert_eq!(inv.double, 1);
     }
 }
