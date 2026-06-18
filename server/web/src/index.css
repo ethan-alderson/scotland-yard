@@ -1,0 +1,79 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #14161a;
+  color: #e6e8eb;
+}
+
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #1d2127;
+  border: 1px solid #2c323b;
+  border-radius: 8px;
+}
+
+.toolbar h1 {
+  font-size: 18px;
+  margin: 0 12px 0 0;
+}
+
+.toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  user-select: none;
+  cursor: pointer;
+}
+
+.toolbar .spacer {
+  flex: 1;
+}
+
+.toolbar .readout {
+  font-variant-numeric: tabular-nums;
+  color: #9aa3ad;
+  font-size: 14px;
+}
+
+.board-frame {
+  border: 1px solid #2c323b;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0c0d10;
+  line-height: 0;
+}
+
+.board-frame svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.status {
+  padding: 24px;
+  color: #9aa3ad;
+}
+
+.status.error {
+  color: #ff6b6b;
+}
