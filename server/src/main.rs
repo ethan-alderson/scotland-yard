@@ -4,6 +4,7 @@
 //! lifecycle for playing a game over HTTP — create, read (god view), list legal
 //! moves, apply a move. No UI yet; this is driven by `scripts/smoke.sh`.
 
+mod board_geometry;
 mod dto;
 mod error;
 mod routes;

@@ -2,12 +2,15 @@
 //! games, plus the standard Scotland Yard presets.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
 use engine::board::Board;
 use engine::gamestate::TicketInventory;
 use engine::history::Game;
+
+use crate::board_geometry::BoardDto;
 
 /// The 18 standard Scotland Yard start cards. Both Mr X and the detectives are
 /// dealt distinct stations from this pool at game start.
@@ -30,22 +33,36 @@ pub fn standard_detective_tickets() -> TicketInventory {
 #[derive(Clone)]
 pub struct AppState {
     pub board: Arc<Board>,
+    /// Static board geometry served at `GET /api/board`, built once at startup.
+    pub geometry: Arc<BoardDto>,
+    /// Directory holding `map.png` / `pos.txt`, served statically at `/assets`.
+    pub assets_dir: Arc<PathBuf>,
     games: Arc<RwLock<HashMap<String, Game>>>,
     next_id: Arc<AtomicU64>,
 }
 
 impl AppState {
-    /// Load the board once at startup. The connections file path can be
-    /// overridden with `SY_CONNECTIONS`; otherwise it resolves relative to this
-    /// crate so the server runs from any working directory.
+    /// Load the board, geometry, and assets once at startup. Paths can be
+    /// overridden with `SY_CONNECTIONS` / `SY_ASSETS`; otherwise they resolve
+    /// relative to this crate so the server runs from any working directory.
     pub fn new() -> Self {
-        let path = std::env::var("SY_CONNECTIONS").unwrap_or_else(|_| {
+        let connections_path = PathBuf::from(std::env::var("SY_CONNECTIONS").unwrap_or_else(|_| {
             concat!(env!("CARGO_MANIFEST_DIR"), "/../engine/connections.txt").to_string()
-        });
-        let board = Arc::new(Board::from_connections_file(path));
+        }));
+        let assets_dir = PathBuf::from(
+            std::env::var("SY_ASSETS")
+                .unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/assets").to_string()),
+        );
+
+        let board = Arc::new(Board::from_connections_file(
+            connections_path.to_string_lossy().into_owned(),
+        ));
+        let geometry = Arc::new(BoardDto::load(&connections_path, &assets_dir));
 
         Self {
             board,
+            geometry,
+            assets_dir: Arc::new(assets_dir),
             games: Arc::new(RwLock::new(HashMap::new())),
             next_id: Arc::new(AtomicU64::new(1)),
         }
