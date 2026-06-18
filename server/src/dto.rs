@@ -8,8 +8,24 @@ use serde::{Deserialize, Serialize};
 
 use engine::board::{StationId, TicketType};
 use engine::gamestate::{Action, PlayerId, PlayerState, Step, TicketInventory, Winner};
-use engine::history::Game;
+use engine::history::{Game, MrXMove};
 use engine::rules::legal_actions;
+
+/// Convert Mr X's move log to wire form. The spent ticket is always public; the
+/// station is present only on reveal legs.
+pub fn mr_x_log_dto(log: &[MrXMove]) -> Vec<MrXLogEntryDto> {
+    log.iter()
+        .map(|m| MrXLogEntryDto {
+            ticket: m.ticket.into(),
+            revealed: m.revealed.map(|st| st.id as u16),
+        })
+        .collect()
+}
+
+/// The most recent station Mr X has revealed, if any.
+pub fn last_revealed_station(log: &[MrXMove]) -> Option<u16> {
+    log.iter().rev().find_map(|m| m.revealed).map(|st| st.id as u16)
+}
 
 // ---------------------------------------------------------------------------
 // Leaf types
@@ -175,17 +191,52 @@ impl GameStateDto {
             is_terminal: s.is_terminal,
             winner: s.winner.map(Into::into),
             players: s.players.iter().map(PlayerDto::from).collect(),
-            mr_x_log: game
-                .history
-                .mr_x_log
-                .iter()
-                .map(|m| MrXLogEntryDto {
-                    ticket: m.ticket.into(),
-                    revealed: m.revealed.map(|st| st.id as u16),
-                })
-                .collect(),
+            mr_x_log: mr_x_log_dto(&game.history.mr_x_log),
         }
     }
+}
+
+/// Who a `/view` response is rendered for.
+#[derive(Serialize, Clone, Copy)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum ViewerDto {
+    God,
+    Mrx,
+    Detective { n: u8 },
+}
+
+/// Mr X as seen from a particular viewpoint. `station` is present only when the
+/// viewer is allowed to know it (god / Mr X); for detectives it is `None` and
+/// `last_revealed_station` is the most they can infer directly.
+#[derive(Serialize)]
+pub struct MrXViewDto {
+    pub tickets: TicketsDto,
+    pub station: Option<u16>,
+    pub last_revealed_station: Option<u16>,
+    pub log: Vec<MrXLogEntryDto>,
+}
+
+/// A perspective-filtered view of the game. Public scalars (turn, terminal,
+/// winner) are the same for everyone; only Mr X's live position is gated.
+#[derive(Serialize)]
+pub struct ViewDto {
+    pub game_id: String,
+    pub viewer: ViewerDto,
+    pub current_player: usize,
+    pub turn_number: usize,
+    pub max_turns: usize,
+    pub is_terminal: bool,
+    pub winner: Option<WinnerDto>,
+    pub detectives: Vec<PlayerDto>,
+    pub mr_x: MrXViewDto,
+}
+
+/// `?as=god|mrx|detective` (+ `&n=` for detective).
+#[derive(Deserialize)]
+pub struct ViewQuery {
+    #[serde(rename = "as")]
+    pub as_view: Option<String>,
+    pub n: Option<u8>,
 }
 
 /// One destination reachable by the current player, with the ticket(s) that get
