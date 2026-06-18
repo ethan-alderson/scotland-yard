@@ -207,13 +207,9 @@ impl From<&GameState> for StateResponse {
     }
 }
 
-struct GameHistory {
-    // We need some notion of the partially observable information, something encoding Mr X's move history.
-    // need his known positions and also the ticket he used every turn
-    mr_x_revealed_positions: Vec<Option<u8>>,
-    mr_x_actions: Vec<Action>,
-}
-
+// The partially-observable information layer now lives in the `history` and
+// `observation` modules: `GameHistory` (Mr X's public move log) and
+// `DetectiveObservation` (a viewer's projection of the world).
 
 #[cfg(test)]
 mod tests {
