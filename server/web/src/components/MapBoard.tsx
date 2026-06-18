@@ -8,6 +8,7 @@ interface Props {
   showLabels: boolean;
   showEdges: boolean;
   tokens?: TokenSpec[];
+  highlight?: Set<number>;
   onStationClick?: (id: number) => void;
 }
 
@@ -15,7 +16,14 @@ interface Props {
 // map image fills that space and every overlay (edges, stations, tokens) is
 // drawn in the same coordinate system, so /api/board coordinates need no
 // scaling. CSS scales the SVG responsively.
-export default function MapBoard({ board, showLabels, showEdges, tokens, onStationClick }: Props) {
+export default function MapBoard({
+  board,
+  showLabels,
+  showEdges,
+  tokens,
+  highlight,
+  onStationClick,
+}: Props) {
   const { image, stations, edges } = board;
   return (
     <div className="board-frame">
@@ -25,6 +33,7 @@ export default function MapBoard({ board, showLabels, showEdges, tokens, onStati
         <StationLayer
           stations={stations}
           showLabels={showLabels}
+          highlight={highlight}
           onStationClick={onStationClick}
         />
         {tokens && <TokenLayer tokens={tokens} stations={stations} />}

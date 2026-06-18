@@ -352,3 +352,46 @@ button.primary:hover:not(:disabled) {
 .player-head .dot {
   flex-shrink: 0;
 }
+
+/* Move bar */
+.move-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: #15241a;
+  border: 1px solid #2c5e38;
+}
+.move-bar.hint-bar {
+  background: #1d2127;
+  border-color: #2c323b;
+  color: #9aa3ad;
+}
+.move-bar .move-who {
+  font-weight: 700;
+}
+.move-bar .double-status {
+  color: #e0b020;
+  font-size: 14px;
+}
+.mode-toggle {
+  display: inline-flex;
+  gap: 4px;
+}
+.mode-toggle button.active {
+  background: #2f6fec;
+  border-color: #2f6fec;
+  color: #fff;
+}
+.ticket-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.ticket-picker button {
+  text-transform: capitalize;
+}

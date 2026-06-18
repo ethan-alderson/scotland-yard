@@ -1,9 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { BoardDto, Ticket } from "../api/board";
 import {
+  applyMove,
+  fetchLegalMoves,
   fetchView,
-  perspectiveKey,
+  type LegalMovesDto,
+  type MoveRequest,
   type Perspective,
+  type StepDto,
   type ViewDto,
 } from "../api/games";
 import MapBoard from "../components/MapBoard";
@@ -24,27 +28,124 @@ const TICKET_ICON: Record<Ticket, string> = {
   black: "⬛",
 };
 
+type Mode = "single" | "double";
+
 export default function PlayPage({ board, gameId, onNewGame }: Props) {
   const [perspective, setPerspective] = useState<Perspective>("god");
   const [view, setView] = useState<ViewDto | null>(null);
+  const [legalMoves, setLegalMoves] = useState<LegalMovesDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const [showLabels, setShowLabels] = useState(false);
   const [showEdges, setShowEdges] = useState(false);
 
-  // Re-fetch whenever the game or the chosen perspective changes. (Phase 6 will
-  // also re-fetch after each move.)
-  useEffect(() => {
-    let alive = true;
-    setError(null);
-    fetchView(gameId, perspective)
-      .then((v) => alive && setView(v))
-      .catch((e: unknown) => alive && setError(e instanceof Error ? e.message : String(e)));
-    return () => {
-      alive = false;
-    };
-  }, [gameId, perspectiveKey(perspective)]);
+  // Move-builder state.
+  const [mode, setMode] = useState<Mode>("single");
+  const [pendingFirst, setPendingFirst] = useState<StepDto | null>(null);
+  const [pendingDest, setPendingDest] = useState<{ to: number; tickets: Ticket[] } | null>(null);
 
+  const clearPending = useCallback(() => {
+    setPendingFirst(null);
+    setPendingDest(null);
+  }, []);
+
+  // Fetch the view, and (only when this viewer may act) the current player's
+  // legal moves. We never fetch legal moves for a player we aren't viewing as,
+  // so a detective never receives Mr X's move list.
+  const reload = useCallback(async () => {
+    setError(null);
+    const v = await fetchView(gameId, perspective);
+    setView(v);
+    setMode("single");
+    clearPending();
+    if (!v.is_terminal && canActAs(v, perspective)) {
+      setLegalMoves(await fetchLegalMoves(gameId));
+    } else {
+      setLegalMoves(null);
+    }
+  }, [gameId, perspective, clearPending]);
+
+  useEffect(() => {
+    reload().catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+  }, [reload]);
+
+  async function submit(req: MoveRequest) {
+    setSubmitting(true);
+    setError(null);
+    try {
+      await applyMove(gameId, req);
+      await reload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const isMrXTurn = view?.current_player === 0;
+  const doublesAvailable = !!legalMoves && legalMoves.doubles.length > 0 && isMrXTurn;
+  const effectiveMode: Mode = doublesAvailable ? mode : "single";
+
+  // Tickets available to reach `to` at the current stage of the builder.
+  function ticketsFor(to: number): Ticket[] {
+    if (!legalMoves) return [];
+    if (effectiveMode === "single") {
+      return legalMoves.singles.find((s) => s.to === to)?.tickets ?? [];
+    }
+    if (!pendingFirst) {
+      return unique(legalMoves.doubles.filter((d) => d.first.to === to).map((d) => d.first.ticket));
+    }
+    return unique(
+      legalMoves.doubles
+        .filter(
+          (d) =>
+            d.first.to === pendingFirst.to &&
+            d.first.ticket === pendingFirst.ticket &&
+            d.second.to === to,
+        )
+        .map((d) => d.second.ticket),
+    );
+  }
+
+  // The set of legal target stations to highlight at the current stage.
+  function legalTargets(): Set<number> {
+    if (!legalMoves) return new Set();
+    if (effectiveMode === "single") return new Set(legalMoves.singles.map((s) => s.to));
+    if (!pendingFirst) return new Set(legalMoves.doubles.map((d) => d.first.to));
+    return new Set(
+      legalMoves.doubles
+        .filter((d) => d.first.to === pendingFirst.to && d.first.ticket === pendingFirst.ticket)
+        .map((d) => d.second.to),
+    );
+  }
+
+  // Commit a chosen (destination, ticket) for the current stage.
+  function act(to: number, ticket: Ticket) {
+    setPendingDest(null);
+    if (effectiveMode === "single") {
+      void submit({ kind: "single", to, ticket });
+    } else if (!pendingFirst) {
+      setPendingFirst({ to, ticket });
+    } else {
+      void submit({ kind: "double", first: pendingFirst, second: { to, ticket } });
+    }
+  }
+
+  function handleStationClick(id: number) {
+    if (!legalMoves || submitting) return;
+    const tickets = ticketsFor(id);
+    if (tickets.length === 0) return; // not a legal target right now — ignore
+    if (tickets.length === 1) act(id, tickets[0]);
+    else setPendingDest({ to: id, tickets });
+  }
+
+  function changeMode(next: Mode) {
+    setMode(next);
+    clearPending();
+  }
+
+  const movable = !!view && !view.is_terminal && canActAs(view, perspective);
   const detectiveNumbers = view
     ? view.detectives.flatMap((d) => (d.id.kind === "detective" ? [d.id.n] : []))
     : [];
@@ -56,19 +157,11 @@ export default function PlayPage({ board, gameId, onNewGame }: Props) {
         <button onClick={onNewGame}>New game</button>
         <span className="spacer" />
         <label>
-          <input
-            type="checkbox"
-            checked={showLabels}
-            onChange={(e) => setShowLabels(e.target.checked)}
-          />
+          <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} />
           Station IDs
         </label>
         <label>
-          <input
-            type="checkbox"
-            checked={showEdges}
-            onChange={(e) => setShowEdges(e.target.checked)}
-          />
+          <input type="checkbox" checked={showEdges} onChange={(e) => setShowEdges(e.target.checked)} />
           Edges
         </label>
       </div>
@@ -81,10 +174,7 @@ export default function PlayPage({ board, gameId, onNewGame }: Props) {
         >
           God (debug)
         </button>
-        <button
-          className={perspective === "mrx" ? "active" : ""}
-          onClick={() => setPerspective("mrx")}
-        >
+        <button className={perspective === "mrx" ? "active" : ""} onClick={() => setPerspective("mrx")}>
           Mr X
         </button>
         {detectiveNumbers.map((n) => (
@@ -113,12 +203,66 @@ export default function PlayPage({ board, gameId, onNewGame }: Props) {
             </div>
           )}
 
+          {view.is_terminal ? null : movable && legalMoves ? (
+            <div className="move-bar">
+              <span className="move-who">{currentName(view.current_player)} — your move</span>
+
+              {isMrXTurn && doublesAvailable && (
+                <span className="mode-toggle">
+                  <button className={effectiveMode === "single" ? "active" : ""} onClick={() => changeMode("single")}>
+                    Single
+                  </button>
+                  <button className={effectiveMode === "double" ? "active" : ""} onClick={() => changeMode("double")}>
+                    Double
+                  </button>
+                </span>
+              )}
+
+              {effectiveMode === "double" && (
+                <span className="double-status">
+                  {pendingFirst
+                    ? `1st leg → ${pendingFirst.to} (${pendingFirst.ticket}); pick the 2nd stop`
+                    : "pick the 1st stop"}
+                </span>
+              )}
+
+              {pendingDest ? (
+                <span className="ticket-picker">
+                  Ticket to {pendingDest.to}:
+                  {pendingDest.tickets.map((t) => (
+                    <button key={t} onClick={() => act(pendingDest.to, t)}>
+                      {TICKET_ICON[t]} {t}
+                    </button>
+                  ))}
+                </span>
+              ) : (
+                <span className="hint">Click a highlighted station.</span>
+              )}
+
+              {(pendingFirst || pendingDest) && <button onClick={clearPending}>Reset</button>}
+
+              {legalMoves.can_pass && (
+                <button className="primary" onClick={() => submit({ kind: "pass" })}>
+                  Pass (no moves)
+                </button>
+              )}
+
+              {submitting && <span className="hint">submitting…</span>}
+            </div>
+          ) : (
+            <div className="move-bar hint-bar">
+              It's {currentName(view.current_player)}'s turn — switch to their view (or God) to move.
+            </div>
+          )}
+
           <div className="play-layout">
             <MapBoard
               board={board}
               showLabels={showLabels}
               showEdges={showEdges}
               tokens={buildTokens(view)}
+              highlight={movable ? legalTargets() : undefined}
+              onStationClick={movable ? handleStationClick : undefined}
             />
 
             <aside className="panel">
@@ -194,9 +338,21 @@ export default function PlayPage({ board, gameId, onNewGame }: Props) {
   );
 }
 
+// Whether the chosen perspective is allowed to act: the debug view can drive any
+// player; otherwise the perspective must match whoever's turn it is.
+function canActAs(view: ViewDto, p: Perspective): boolean {
+  if (p === "god") return true;
+  if (p === "mrx") return view.current_player === 0;
+  return view.current_player === p.detective;
+}
+
 // player index 0 is Mr X; index k is Detective k.
 function currentName(index: number): string {
   return index === 0 ? "Mr X" : `Detective ${index}`;
+}
+
+function unique<T>(xs: T[]): T[] {
+  return [...new Set(xs)];
 }
 
 function buildTokens(view: ViewDto): TokenSpec[] {
@@ -223,7 +379,6 @@ function buildTokens(view: ViewDto): TokenSpec[] {
       ghost: false,
     });
   } else if (mrx.last_revealed_station != null) {
-    // Detective view between reveals: show his last-known spot as a ghost.
     tokens.push({
       station: mrx.last_revealed_station,
       label: "?",

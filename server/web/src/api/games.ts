@@ -84,6 +84,57 @@ export async function fetchView(gameId: string, p: Perspective): Promise<ViewDto
   return (await res.json()) as ViewDto;
 }
 
+// --- Legal moves + applying a move ----------------------------------------
+
+export interface StepDto {
+  to: number;
+  ticket: Ticket;
+}
+
+export interface MoveOptionDto {
+  to: number;
+  tickets: Ticket[];
+}
+
+export interface DoubleOptionDto {
+  first: StepDto;
+  second: StepDto;
+}
+
+export interface LegalMovesDto {
+  player: PlayerIdDto;
+  can_pass: boolean;
+  singles: MoveOptionDto[];
+  doubles: DoubleOptionDto[];
+}
+
+export type MoveRequest =
+  | { kind: "single"; to: number; ticket: Ticket }
+  | { kind: "double"; first: StepDto; second: StepDto }
+  | { kind: "pass" };
+
+export async function fetchLegalMoves(gameId: string): Promise<LegalMovesDto> {
+  const res = await fetch(`/api/games/${gameId}/legal_moves`);
+  if (!res.ok) {
+    throw new Error(await errorMessage(res));
+  }
+  return (await res.json()) as LegalMovesDto;
+}
+
+// The POST response is god-view state, which we intentionally ignore (a detective
+// client must not display Mr X's position); callers re-fetch the perspective
+// view instead.
+export async function applyMove(gameId: string, req: MoveRequest): Promise<void> {
+  const res = await fetch(`/api/games/${gameId}/moves`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) {
+    throw new Error(await errorMessage(res));
+  }
+}
+
 export async function createGame(req: NewGameRequest): Promise<GameStateDto> {
   const res = await fetch("/api/games", {
     method: "POST",

@@ -18,8 +18,10 @@ interface Props {
 export default function TokenLayer({ tokens, stations }: Props) {
   const pos = new Map(stations.map((s) => [s.id, s]));
 
+  // Tokens are visual only; let clicks fall through to the station beneath so a
+  // move onto an occupied square (e.g. a detective capturing Mr X) still works.
   return (
-    <g>
+    <g pointerEvents="none">
       {tokens.map((t, i) => {
         const at = pos.get(t.station);
         if (!at) return null;
