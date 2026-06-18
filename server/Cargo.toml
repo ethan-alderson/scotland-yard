@@ -6,4 +6,6 @@ edition = "2024"
 [dependencies]
 axum = "0.8.9"
 engine = { path = "../engine" }
-tokio = { version = "1.52.3", features = ["full"] } 
+tokio = { version = "1.52.3", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+rand = "0.8"
