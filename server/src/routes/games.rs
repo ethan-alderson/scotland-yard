@@ -124,6 +124,43 @@ fn build_view(id: &str, game: &Game, q: &ViewQuery) -> Result<ViewDto, ApiError>
     let s = &game.state;
     let log = mr_x_log_dto(&game.history.mr_x_log);
     let last_revealed = last_revealed_station(&game.history.mr_x_log);
+    let detective_count = s
+        .players
+        .iter()
+        .filter(|p| matches!(p.id, PlayerId::Detective(_)))
+        .count() as u8;
+
+    // A concrete viewpoint to build. `current` resolves to whoever's turn it is,
+    // which is what the pass-and-play UI uses (the device always shows the
+    // active player's legitimate view).
+    enum Resolved {
+        Full(ViewerDto),
+        Detective(u8),
+    }
+    let resolved = match q.as_view.as_deref().unwrap_or("current") {
+        "god" => Resolved::Full(ViewerDto::God),
+        "mrx" => Resolved::Full(ViewerDto::Mrx),
+        "current" => {
+            // Player index 0 is Mr X (sees all); index k is Detective k (hidden).
+            if s.current_player == 0 {
+                Resolved::Full(ViewerDto::Mrx)
+            } else {
+                Resolved::Detective(s.current_player as u8)
+            }
+        }
+        "detective" => {
+            let n = q
+                .n
+                .ok_or_else(|| ApiError::bad_request("detective view requires ?n="))?;
+            if n < 1 || n > detective_count {
+                return Err(ApiError::bad_request(format!(
+                    "detective n must be 1..={detective_count}"
+                )));
+            }
+            Resolved::Detective(n)
+        }
+        other => return Err(ApiError::bad_request(format!("unknown perspective '{other}'"))),
+    };
 
     // Public scalars are identical for every viewer; only Mr X's station is gated.
     let common = |viewer, detectives, mr_x: MrXViewDto| ViewDto {
@@ -138,8 +175,9 @@ fn build_view(id: &str, game: &Game, q: &ViewQuery) -> Result<ViewDto, ApiError>
         mr_x,
     };
 
-    match q.as_view.as_deref().unwrap_or("god") {
-        as_view @ ("god" | "mrx") => {
+    match resolved {
+        // God / Mr X (and `current` on Mr X's turn): full knowledge.
+        Resolved::Full(viewer) => {
             let mr_x = s
                 .players
                 .iter()
@@ -151,7 +189,6 @@ fn build_view(id: &str, game: &Game, q: &ViewQuery) -> Result<ViewDto, ApiError>
                 .filter(|p| matches!(p.id, PlayerId::Detective(_)))
                 .map(PlayerDto::from)
                 .collect();
-            let viewer = if as_view == "god" { ViewerDto::God } else { ViewerDto::Mrx };
             Ok(common(
                 viewer,
                 detectives,
@@ -163,38 +200,23 @@ fn build_view(id: &str, game: &Game, q: &ViewQuery) -> Result<ViewDto, ApiError>
                 },
             ))
         }
-        "detective" => {
-            let n = q
-                .n
-                .ok_or_else(|| ApiError::bad_request("detective view requires ?n="))?;
-            let count = s
-                .players
-                .iter()
-                .filter(|p| matches!(p.id, PlayerId::Detective(_)))
-                .count() as u8;
-            if n < 1 || n > count {
-                return Err(ApiError::bad_request(format!("detective n must be 1..={count}")));
+        // A detective's hidden view, built from observe() so Mr X's station can't leak.
+        Resolved::Detective(n) => match game.observe(PlayerId::Detective(n)) {
+            Observation::Detective(obs) => {
+                let detectives = obs.detectives.iter().map(PlayerDto::from).collect();
+                Ok(common(
+                    ViewerDto::Detective { n },
+                    detectives,
+                    MrXViewDto {
+                        tickets: (&obs.mr_x_tickets).into(),
+                        station: None,
+                        last_revealed_station: last_revealed,
+                        log,
+                    },
+                ))
             }
-            // Build from the observation projection: it has no station field, so
-            // there is no way to leak Mr X's position here.
-            match game.observe(PlayerId::Detective(n)) {
-                Observation::Detective(obs) => {
-                    let detectives = obs.detectives.iter().map(PlayerDto::from).collect();
-                    Ok(common(
-                        ViewerDto::Detective { n },
-                        detectives,
-                        MrXViewDto {
-                            tickets: (&obs.mr_x_tickets).into(),
-                            station: None,
-                            last_revealed_station: last_revealed,
-                            log,
-                        },
-                    ))
-                }
-                Observation::MrX(_) => unreachable!("detective viewer yields a detective observation"),
-            }
-        }
-        other => Err(ApiError::bad_request(format!("unknown perspective '{other}'"))),
+            Observation::MrX(_) => unreachable!("detective viewer yields a detective observation"),
+        },
     }
 }
 

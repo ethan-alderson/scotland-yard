@@ -6,7 +6,6 @@ import {
   fetchView,
   type LegalMovesDto,
   type MoveRequest,
-  type Perspective,
   type StepDto,
   type ViewDto,
 } from "../api/games";
@@ -31,7 +30,8 @@ const TICKET_ICON: Record<Ticket, string> = {
 type Mode = "single" | "double";
 
 export default function PlayPage({ board, gameId, onNewGame }: Props) {
-  const [perspective, setPerspective] = useState<Perspective>("god");
+  // Debug reveals everything; otherwise the view follows whoever's turn it is.
+  const [debug, setDebug] = useState(false);
   const [view, setView] = useState<ViewDto | null>(null);
   const [legalMoves, setLegalMoves] = useState<LegalMovesDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,21 +50,17 @@ export default function PlayPage({ board, gameId, onNewGame }: Props) {
     setPendingDest(null);
   }, []);
 
-  // Fetch the view, and (only when this viewer may act) the current player's
-  // legal moves. We never fetch legal moves for a player we aren't viewing as,
-  // so a detective never receives Mr X's move list.
+  // Fetch the current view and, while the game is live, the current player's
+  // legal moves. In normal play the view IS the current player's, so they can
+  // always act; in debug we see all and can drive any player.
   const reload = useCallback(async () => {
     setError(null);
-    const v = await fetchView(gameId, perspective);
+    const v = await fetchView(gameId, debug ? "god" : "current");
     setView(v);
     setMode("single");
     clearPending();
-    if (!v.is_terminal && canActAs(v, perspective)) {
-      setLegalMoves(await fetchLegalMoves(gameId));
-    } else {
-      setLegalMoves(null);
-    }
-  }, [gameId, perspective, clearPending]);
+    setLegalMoves(v.is_terminal ? null : await fetchLegalMoves(gameId));
+  }, [gameId, debug, clearPending]);
 
   useEffect(() => {
     reload().catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
@@ -145,17 +141,16 @@ export default function PlayPage({ board, gameId, onNewGame }: Props) {
     clearPending();
   }
 
-  const movable = !!view && !view.is_terminal && canActAs(view, perspective);
-  const detectiveNumbers = view
-    ? view.detectives.flatMap((d) => (d.id.kind === "detective" ? [d.id.n] : []))
-    : [];
-
   return (
     <div className="play">
       <div className="toolbar">
         <h1>Scotland Yard</h1>
         <button onClick={onNewGame}>New game</button>
         <span className="spacer" />
+        <label className="debug-toggle">
+          <input type="checkbox" checked={debug} onChange={(e) => setDebug(e.target.checked)} />
+          Debug (reveal all)
+        </label>
         <label>
           <input type="checkbox" checked={showLabels} onChange={(e) => setShowLabels(e.target.checked)} />
           Station IDs
@@ -166,30 +161,8 @@ export default function PlayPage({ board, gameId, onNewGame }: Props) {
         </label>
       </div>
 
-      <div className="perspective">
-        <span className="perspective-label">View as</span>
-        <button
-          className={perspective === "god" ? "active debug" : "debug"}
-          onClick={() => setPerspective("god")}
-        >
-          God (debug)
-        </button>
-        <button className={perspective === "mrx" ? "active" : ""} onClick={() => setPerspective("mrx")}>
-          Mr X
-        </button>
-        {detectiveNumbers.map((n) => (
-          <button
-            key={n}
-            className={typeof perspective === "object" && perspective.detective === n ? "active" : ""}
-            onClick={() => setPerspective({ detective: n })}
-          >
-            Det {n}
-          </button>
-        ))}
-      </div>
-
       {error && <div className="form-error">{error}</div>}
-      {!view && !error && <div className="status">Loading view…</div>}
+      {!view && !error && <div className="status">Loading…</div>}
 
       {view && (
         <>
@@ -203,57 +176,56 @@ export default function PlayPage({ board, gameId, onNewGame }: Props) {
             </div>
           )}
 
-          {view.is_terminal ? null : movable && legalMoves ? (
-            <div className="move-bar">
-              <span className="move-who">{currentName(view.current_player)} — your move</span>
+          {!view.is_terminal &&
+            (legalMoves ? (
+              <div className="move-bar">
+                <span className="move-who">{currentName(view.current_player)} — your move</span>
 
-              {isMrXTurn && doublesAvailable && (
-                <span className="mode-toggle">
-                  <button className={effectiveMode === "single" ? "active" : ""} onClick={() => changeMode("single")}>
-                    Single
-                  </button>
-                  <button className={effectiveMode === "double" ? "active" : ""} onClick={() => changeMode("double")}>
-                    Double
-                  </button>
-                </span>
-              )}
-
-              {effectiveMode === "double" && (
-                <span className="double-status">
-                  {pendingFirst
-                    ? `1st leg → ${pendingFirst.to} (${pendingFirst.ticket}); pick the 2nd stop`
-                    : "pick the 1st stop"}
-                </span>
-              )}
-
-              {pendingDest ? (
-                <span className="ticket-picker">
-                  Ticket to {pendingDest.to}:
-                  {pendingDest.tickets.map((t) => (
-                    <button key={t} onClick={() => act(pendingDest.to, t)}>
-                      {TICKET_ICON[t]} {t}
+                {isMrXTurn && doublesAvailable && (
+                  <span className="mode-toggle">
+                    <button className={effectiveMode === "single" ? "active" : ""} onClick={() => changeMode("single")}>
+                      Single
                     </button>
-                  ))}
-                </span>
-              ) : (
-                <span className="hint">Click a highlighted station.</span>
-              )}
+                    <button className={effectiveMode === "double" ? "active" : ""} onClick={() => changeMode("double")}>
+                      Double
+                    </button>
+                  </span>
+                )}
 
-              {(pendingFirst || pendingDest) && <button onClick={clearPending}>Reset</button>}
+                {effectiveMode === "double" && (
+                  <span className="double-status">
+                    {pendingFirst
+                      ? `1st leg → ${pendingFirst.to} (${pendingFirst.ticket}); pick the 2nd stop`
+                      : "pick the 1st stop"}
+                  </span>
+                )}
 
-              {legalMoves.can_pass && (
-                <button className="primary" onClick={() => submit({ kind: "pass" })}>
-                  Pass (no moves)
-                </button>
-              )}
+                {pendingDest ? (
+                  <span className="ticket-picker">
+                    Ticket to {pendingDest.to}:
+                    {pendingDest.tickets.map((t) => (
+                      <button key={t} onClick={() => act(pendingDest.to, t)}>
+                        {TICKET_ICON[t]} {t}
+                      </button>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="hint">Click a highlighted station.</span>
+                )}
 
-              {submitting && <span className="hint">submitting…</span>}
-            </div>
-          ) : (
-            <div className="move-bar hint-bar">
-              It's {currentName(view.current_player)}'s turn — switch to their view (or God) to move.
-            </div>
-          )}
+                {(pendingFirst || pendingDest) && <button onClick={clearPending}>Reset</button>}
+
+                {legalMoves.can_pass && (
+                  <button className="primary" onClick={() => submit({ kind: "pass" })}>
+                    Pass (no moves)
+                  </button>
+                )}
+
+                {submitting && <span className="hint">submitting…</span>}
+              </div>
+            ) : (
+              <div className="move-bar hint-bar">Loading moves…</div>
+            ))}
 
           <div className="play-layout">
             <MapBoard
@@ -261,8 +233,8 @@ export default function PlayPage({ board, gameId, onNewGame }: Props) {
               showLabels={showLabels}
               showEdges={showEdges}
               tokens={buildTokens(view)}
-              highlight={movable ? legalTargets() : undefined}
-              onStationClick={movable ? handleStationClick : undefined}
+              highlight={legalMoves ? legalTargets() : undefined}
+              onStationClick={legalMoves ? handleStationClick : undefined}
             />
 
             <aside className="panel">
@@ -336,14 +308,6 @@ export default function PlayPage({ board, gameId, onNewGame }: Props) {
       )}
     </div>
   );
-}
-
-// Whether the chosen perspective is allowed to act: the debug view can drive any
-// player; otherwise the perspective must match whoever's turn it is.
-function canActAs(view: ViewDto, p: Perspective): boolean {
-  if (p === "god") return true;
-  if (p === "mrx") return view.current_player === 0;
-  return view.current_player === p.detective;
 }
 
 // player index 0 is Mr X; index k is Detective k.

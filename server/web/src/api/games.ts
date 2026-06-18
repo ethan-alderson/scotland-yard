@@ -67,17 +67,12 @@ export interface ViewDto {
   mr_x: MrXViewDto;
 }
 
-// What the player is currently looking through. `god` is the debug view.
-export type Perspective = "god" | "mrx" | { detective: number };
+// In normal play the view follows whoever's turn it is (`current`); debug mode
+// reveals everything (`god`).
+export type ViewMode = "current" | "god";
 
-export function perspectiveKey(p: Perspective): string {
-  return p === "god" || p === "mrx" ? p : `det-${p.detective}`;
-}
-
-export async function fetchView(gameId: string, p: Perspective): Promise<ViewDto> {
-  const query =
-    p === "god" ? "as=god" : p === "mrx" ? "as=mrx" : `as=detective&n=${p.detective}`;
-  const res = await fetch(`/api/games/${gameId}/view?${query}`);
+export async function fetchView(gameId: string, mode: ViewMode): Promise<ViewDto> {
+  const res = await fetch(`/api/games/${gameId}/view?as=${mode}`);
   if (!res.ok) {
     throw new Error(await errorMessage(res));
   }

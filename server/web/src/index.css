@@ -265,31 +265,10 @@ button.primary:hover:not(:disabled) {
   color: #b9c0c9;
 }
 
-/* Perspective selector */
-.perspective {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-.perspective-label {
-  font-size: 13px;
-  color: #8a929c;
-  margin-right: 2px;
-}
-.perspective button.active {
-  background: #2f6fec;
-  border-color: #2f6fec;
-  color: #fff;
-}
-.perspective button.debug {
-  border-style: dashed;
-}
-.perspective button.active.debug {
-  background: #3a2c12;
-  border-color: #e0b020;
+/* Debug toggle */
+.debug-toggle {
   color: #e0b020;
+  font-weight: 600;
 }
 
 /* Mr X card + travel log */
