@@ -1,0 +1,524 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #14161a;
+  color: #e6e8eb;
+}
+
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #1d2127;
+  border: 1px solid #2c323b;
+  border-radius: 8px;
+}
+
+.toolbar h1 {
+  font-size: 18px;
+  margin: 0 12px 0 0;
+}
+
+.toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  user-select: none;
+  cursor: pointer;
+}
+
+.toolbar .spacer {
+  flex: 1;
+}
+
+.toolbar .readout {
+  font-variant-numeric: tabular-nums;
+  color: #9aa3ad;
+  font-size: 14px;
+}
+
+.board-frame {
+  border: 1px solid #2c323b;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0c0d10;
+  line-height: 0;
+}
+
+.board-frame svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.status {
+  padding: 24px;
+  color: #9aa3ad;
+}
+
+.status.error {
+  color: #ff6b6b;
+}
+
+/* Buttons */
+button {
+  font: inherit;
+  padding: 7px 12px;
+  border-radius: 7px;
+  border: 1px solid #3a414c;
+  background: #262b33;
+  color: #e6e8eb;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  background: #2f3640;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button.primary {
+  background: #2f6fec;
+  border-color: #2f6fec;
+  color: #fff;
+  font-weight: 600;
+}
+button.primary:hover:not(:disabled) {
+  background: #3b79f0;
+}
+
+/* Setup form */
+.setup {
+  max-width: 460px;
+  margin: 32px auto;
+  padding: 24px;
+  background: #1d2127;
+  border: 1px solid #2c323b;
+  border-radius: 10px;
+}
+.setup h1 {
+  margin-top: 0;
+}
+.field {
+  margin-bottom: 16px;
+}
+.field > label,
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #b9c0c9;
+}
+.field input:not([type="radio"]),
+.field select {
+  font: inherit;
+  padding: 7px 10px;
+  border-radius: 7px;
+  border: 1px solid #3a414c;
+  background: #14161a;
+  color: #e6e8eb;
+  width: 140px;
+}
+.radio-row {
+  display: flex;
+  gap: 18px;
+}
+.radio-row input[type="radio"] {
+  width: auto;
+  margin: 0;
+}
+.radio-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.manual-starts {
+  padding: 12px;
+  border: 1px dashed #3a414c;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.hint {
+  font-size: 13px;
+  color: #8a929c;
+}
+.form-error {
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  background: #3a1f22;
+  border: 1px solid #6b2b30;
+  color: #ff9a9a;
+  font-size: 14px;
+}
+
+/* Play view */
+.toolbar .tag {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #3a2c12;
+  color: #e0b020;
+  border: 1px solid #6b541d;
+}
+.banner {
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  background: #1a3320;
+  border: 1px solid #2c5e38;
+  color: #b6f0c4;
+  font-weight: 600;
+}
+.banner.subtle {
+  background: #1d2127;
+  border-color: #2c323b;
+  color: #cdd3da;
+  font-weight: 500;
+}
+.play-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+}
+.play-layout .board-frame {
+  width: 100%;
+  min-width: 0;
+}
+/* Horizontal bar of player profiles above the board. */
+.players-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+.players-bar .player-card {
+  flex: 1 1 180px;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.players-bar .player-card.mrx {
+  flex: 2 1 320px;
+}
+.panel {
+  width: 260px;
+  flex-shrink: 0;
+  background: #1d2127;
+  border: 1px solid #2c323b;
+  border-radius: 8px;
+  padding: 14px;
+}
+.panel h2 {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+.player-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.player-list li {
+  padding: 9px 10px;
+  border-radius: 7px;
+  background: #14161a;
+  border: 1px solid #2c323b;
+}
+.player-list li.active {
+  border-color: #2f6fec;
+  box-shadow: 0 0 0 1px #2f6fec inset;
+}
+.player-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.player-head .station {
+  margin-left: auto;
+  color: #8a929c;
+  font-size: 13px;
+}
+.player-head .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #2f6fec;
+}
+.player-head .dot[data-kind="mrx"] {
+  background: #101114;
+  border: 1px solid #555;
+}
+.tickets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #b9c0c9;
+}
+
+/* Debug toggle */
+.debug-toggle {
+  color: #e0b020;
+  font-weight: 600;
+}
+
+/* Mr X card + travel log */
+.player-card {
+  padding: 9px 10px;
+  border-radius: 7px;
+  background: #14161a;
+  border: 1px solid #2c323b;
+  margin-bottom: 12px;
+}
+.player-card.active {
+  border-color: #2f6fec;
+  box-shadow: 0 0 0 1px #2f6fec inset;
+}
+.panel h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #8a929c;
+  margin: 12px 0 6px;
+}
+.mrx-log {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.mrx-log li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #14161a;
+  border: 1px solid #2c323b;
+  font-size: 13px;
+}
+/* Compact, horizontally-scrolling log for the players bar. */
+.mrx-log.horizontal {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  max-height: none;
+  margin: 8px 0 0;
+  overflow-x: auto;
+  gap: 6px;
+}
+.mrx-log.horizontal li {
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 3px 6px;
+}
+.mrx-log.horizontal .leg-no {
+  width: auto;
+}
+.mrx-log.horizontal .leg-reveal,
+.mrx-log.horizontal .leg-hidden {
+  margin-left: 0;
+}
+.log-hint {
+  margin: 8px 0 0;
+}
+.mrx-log .leg-no {
+  width: 18px;
+  color: #8a929c;
+  text-align: right;
+}
+.mrx-log .leg-ticket {
+  font-size: 15px;
+}
+.mrx-log .leg-reveal {
+  margin-left: auto;
+  color: #e0b020;
+  font-weight: 700;
+}
+.mrx-log .leg-hidden {
+  margin-left: auto;
+  color: #5b636d;
+  font-style: italic;
+}
+.player-head .dot {
+  flex-shrink: 0;
+}
+
+/* Board stage: positioned wrapper so move menus/toasts overlay the board. */
+.board-stage {
+  position: relative;
+}
+
+/* Move wheel — ticket buttons ringed around the target station. The wheel is a
+   zero-size point at the station; children are placed by transform so they don't
+   blanket the surrounding routes the way a panel would. */
+.move-wheel {
+  position: absolute;
+  z-index: 10;
+  width: 0;
+  height: 0;
+}
+.wheel-ticket,
+.wheel-hub {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  padding: 0;
+}
+.wheel-ticket {
+  width: 34px;
+  height: 34px;
+  background: #1d2127;
+  border: 1px solid #3a424d;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+}
+.wheel-ticket .t-icon {
+  font-size: 17px;
+  line-height: 1;
+}
+.wheel-ticket:not(:disabled):hover {
+  box-shadow: 0 0 0 2px #ffffff, 0 3px 10px rgba(0, 0, 0, 0.5);
+}
+.wheel-ticket:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Per-ticket faces. */
+.t-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.ticket-taxi {
+  background: #f5c518;
+  border-color: #c89e00;
+}
+.ticket-taxi .t-label {
+  color: #14161a;
+}
+.ticket-bus {
+  background: #1f9d6f;
+  border-color: #147554;
+}
+.ticket-bus .t-label {
+  color: #ffffff;
+}
+.ticket-underground {
+  background: #e3433b;
+  border-color: #b5322b;
+}
+.t-roundel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+.ticket-black {
+  background: #ffffff;
+  border-color: #9aa3ad;
+}
+.ticket-black .t-label {
+  color: #14161a;
+  font-size: 8px;
+}
+/* Double-move toggle: a wheel item that flips the ring to first-leg tickets. */
+.wheel-double .t-icon {
+  font-size: 14px;
+  font-weight: 800;
+  color: #e0b020;
+}
+.wheel-double.active {
+  background: #e0b020;
+  border-color: #e0b020;
+}
+.wheel-double.active .t-icon {
+  color: #14161a;
+}
+/* Center hub doubles as the cancel control and shows the destination id. */
+.wheel-hub {
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 700;
+  color: #cdd3da;
+  background: rgba(21, 23, 28, 0.9);
+  border: 1px solid #4a525d;
+}
+.wheel-hub:hover {
+  border-color: #e0552b;
+  color: #fff;
+}
+/* Leg-status note tucked just below the ring. */
+.wheel-note {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, 56px);
+  white-space: nowrap;
+  font-size: 11px;
+  color: #e0b020;
+  background: rgba(21, 23, 28, 0.9);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+/* Toasts overlaid at the top of the board (double prompt, pass, status). */
+.board-toast {
+  position: absolute;
+  z-index: 9;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  background: rgba(21, 23, 28, 0.92);
+  border: 1px solid #3a424d;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
