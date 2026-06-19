@@ -36,7 +36,9 @@ export default function MapBoard({
           highlight={highlight}
           onStationClick={onStationClick}
         />
-        {tokens && <TokenLayer tokens={tokens} stations={stations} />}
+        {tokens && (
+          <TokenLayer tokens={tokens} stations={stations} onStationClick={onStationClick} />
+        )}
       </svg>
     </div>
   );

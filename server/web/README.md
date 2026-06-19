@@ -64,3 +64,15 @@ on station positions.
 - `npm run typecheck` — TypeScript check, no emit
 - `npm run build` — typecheck + production build to `dist/`
 - `npm run preview` — serve the production build locally
+
+
+UI CHANGES:
+
+Make the ticket usage option a menu that appears once you click a station. The menu should always appear even if the station only has one transit option, as a way to force the player to confirm their move. It should show all ticket types but with the unusable choices grayed out. Mr X should also use this menu to confirm the double move. Overlaying the move menu on the board will let us make the board bigger and centralize the players strategization to the board itself, removing the need to constantly scroll around.
+
+We need to organize the screen better for such a large board, the player profiles and their inventories are taking up a large portion of the righthand side, making the board larger by putting them in a bar above it would be helpful for interactivity.
+
+We need to know the function of a station when a player is on it, right now the player icon covers the station on the board so we can't see what the actual station that they're on is. 
+
+
+

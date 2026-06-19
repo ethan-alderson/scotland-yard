@@ -31,14 +31,8 @@ export default function StationLayer({ stations, showLabels, highlight, onStatio
                 strokeWidth={5}
               />
             )}
-            <circle
-              cx={s.x}
-              cy={s.y}
-              r={26}
-              fill="rgba(64, 156, 255, 0.55)"
-              stroke="#0b3a66"
-              strokeWidth={2}
-            />
+            {/* Invisible but still clickable (transparent fill keeps the hit area). */}
+            <circle cx={s.x} cy={s.y} r={26} fill="transparent" />
             {showLabels && (
               <text
                 x={s.x}
